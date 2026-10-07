@@ -24,7 +24,7 @@ const FIXTURE = 'wp-content/plugins/edit-orders-for-woocommerce/tests/e2e/order-
 const created = [];
 
 function cli( command ) {
-	return execSync( `npx -y @wordpress/env@10 run cli ${ command }`, {
+	return execSync( `npx -y @wordpress/env@11 run cli ${ command }`, {
 		env: { ...process.env, MSYS_NO_PATHCONV: '1' },
 		encoding: 'utf8',
 		stdio: [ 'ignore', 'pipe', 'pipe' ],
@@ -117,6 +117,8 @@ async function shot( page, locator, name ) {
 		// 6. Settings.
 		await admin.goto( `${ BASE }/wp-admin/admin.php?page=wc-settings&tab=edit_orders` );
 		await admin.addStyleTag( { content: '.update-nag,.notice{display:none!important}' } );
+		// Taller than the form: a capture longer than the window is stitched, with a seam across it.
+		await admin.setViewportSize( { width: 1400, height: 2000 } );
 		await shot( admin, admin.locator( '#mainform' ), 'screenshot-6.png' );
 	} finally {
 		await browser.close();

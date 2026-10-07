@@ -6,7 +6,7 @@
 # in .wp-env.override.json): EO_CONTAINER=tests-cli bash tests/functional/run.sh
 set -u
 export MSYS_NO_PATHCONV=1
-WPENV="npx -y @wordpress/env@10"
+WPENV="npx -y @wordpress/env@11"
 CONTAINER="${EO_CONTAINER:-cli}"
 DIR="wp-content/plugins/edit-orders-for-woocommerce/tests/functional"
 SUITES="${1:-p1-engine p2-address-cod m1-admin m2-customer m3-settings m4-hardening m5-matrix}"

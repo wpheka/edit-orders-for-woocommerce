@@ -133,7 +133,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		/**
 		 * Adjust a settlement plan before it is previewed or applied.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param Edit_Orders_For_WooCommerce_Settlement_Plan $plan       Plan.
 		 * @param WC_Order                                    $order      Order.

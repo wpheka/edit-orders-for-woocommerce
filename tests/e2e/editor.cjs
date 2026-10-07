@@ -33,7 +33,7 @@ let failures = 0;
 let freeShipping = false;
 
 function wp( args ) {
-	return execSync( `npx -y @wordpress/env@10 run cli wp eval-file ${ FIXTURE } ${ args }`, {
+	return execSync( `npx -y @wordpress/env@11 run cli wp eval-file ${ FIXTURE } ${ args }`, {
 		env: { ...process.env, MSYS_NO_PATHCONV: '1' },
 		encoding: 'utf8',
 		stdio: [ 'ignore', 'pipe', 'pipe' ],

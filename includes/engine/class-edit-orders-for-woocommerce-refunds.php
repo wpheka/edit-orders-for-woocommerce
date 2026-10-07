@@ -116,7 +116,7 @@ class Edit_Orders_For_WooCommerce_Refunds {
 		/**
 		 * Fired when an edit needs a refund the store owner must make by hand.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param WC_Order $order         Order.
 		 * @param string   $amount        Amount.

@@ -266,7 +266,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		/**
 		 * Fired once when a balance order is paid and its changes are applied.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param WC_Order       $balance Balance order.
 		 * @param WC_Order       $order   Original order.

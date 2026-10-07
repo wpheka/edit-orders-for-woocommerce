@@ -97,7 +97,7 @@
 			var replacement;
 
 			if ( states && Object.keys( states ).length ) {
-				replacement = document.createElement( 'select' );
+				replacement   = document.createElement( 'select' );
 				var addOption = function ( value, label ) {
 					var option         = document.createElement( 'option' );
 					option.value       = value;

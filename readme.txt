@@ -4,7 +4,7 @@ Tags: edit order, change order, cancel order, order editing, woocommerce
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 1.0.0
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -40,7 +40,7 @@ Within the time you allow (one hour by default), from the thank-you page, My Acc
 * Edit their order note
 * Say "All good, no changes needed" to close the window early
 
-Changes stop as soon as the order ships: when it is completed, a tracking number is added (WooCommerce Shipment Tracking, Advanced Shipment Tracking, AfterShip) or WooCommerce marks it fulfilled. Customers with an account make changes while logged in. Guests use a link that carries their order key, the same way WooCommerce's own thank-you page works.
+Changes stop as soon as the order ships: when it is completed, a tracking number is added (WooCommerce Shipment Tracking, Advanced Shipment Tracking, AfterShip) or WooCommerce marks it fulfilled. Customers with an account make changes while logged in. Guests use the link in their order email. As on WooCommerce's own order pages, a guest who comes back later from another browser first confirms the email address on the order, so a forwarded link alone can't redirect a parcel.
 
 = The money is always handled correctly =
 
@@ -100,10 +100,10 @@ Your settings and activity log are kept, unless you tick "Delete data on uninsta
 
 == Changelog ==
 
-= 0.1.0 =
+= 1.0.0 =
 * First release.
 
 == Upgrade Notice ==
 
-= 0.1.0 =
+= 1.0.0 =
 First release.

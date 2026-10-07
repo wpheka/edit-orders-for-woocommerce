@@ -72,7 +72,7 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 		/**
 		 * Final say on whether an order can be edited.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param true|WP_Error $result True when allowed.
 		 * @param WC_Order      $order  Order.
@@ -121,7 +121,7 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 		/**
 		 * Payment methods paid on delivery.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param string[] $gateways Gateway IDs.
 		 */
@@ -145,7 +145,7 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 		/**
 		 * Whether the order's payment is authorized but not captured.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param bool     $uncaptured True when not captured.
 		 * @param WC_Order $order      Order.

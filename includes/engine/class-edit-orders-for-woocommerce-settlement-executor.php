@@ -94,7 +94,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 		/**
 		 * Fired before a change set is applied or sent for payment.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param WC_Order                                    $order Order.
 		 * @param Edit_Orders_For_WooCommerce_Settlement_Plan $plan  Plan.
@@ -161,7 +161,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 		/**
 		 * Fired after a change set is applied or sent for payment.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param WC_Order $order  Order.
 		 * @param array    $result Result.

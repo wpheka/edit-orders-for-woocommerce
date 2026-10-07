@@ -70,7 +70,7 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 		/**
 		 * Fired when a customer asks to cancel and the store must decide.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param WC_Order $order  Order.
 		 * @param string   $reason Reason.
@@ -183,7 +183,7 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 		/**
 		 * Fired when an order is cancelled through this plugin.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param WC_Order $order  Order.
 		 * @param string   $actor  Actor.
@@ -331,7 +331,7 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 		/**
 		 * Fired when the store declines a cancellation request.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param WC_Order $order   Order.
 		 * @param string   $message Message for the customer.

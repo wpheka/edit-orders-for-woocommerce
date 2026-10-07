@@ -46,6 +46,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		add_filter( 'woocommerce_my_account_my_orders_actions', array( __CLASS__, 'order_action' ), 10, 2 );
 		add_action( 'woocommerce_email_after_order_table', array( __CLASS__, 'email_link' ), 20, 4 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+		add_filter( 'woocommerce_order_email_verification_required', array( __CLASS__, 'keep_confirmed_guest' ), 10, 2 );
 	}
 
 	/**
@@ -93,13 +94,18 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		}
 
 		$order = wc_get_order( isset( $data['order_id'] ) ? absint( $data['order_id'] ) : 0 );
-		$actor = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $order, isset( $data['order_key'] ) ? $data['order_key'] : '' );
+		$actor = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $order, isset( $data['order_key'] ) ? $data['order_key'] : '', $order ? self::confirmed_email( $order ) : '' );
 		if ( is_wp_error( $actor ) ) {
-			$data   = $actor->get_error_data();
-			$status = isset( $data['status'] ) ? (int) $data['status'] : 404;
+			$error  = $actor->get_error_data();
+			$status = isset( $error['status'] ) ? (int) $error['status'] : 404;
+			$args   = array( 'response' => $status );
+			if ( 'edit_orders_for_woocommerce_confirm_email' === $actor->get_error_code() ) {
+				$args['link_url']  = $order->get_checkout_order_received_url();
+				$args['link_text'] = __( 'Open your order', 'edit-orders-for-woocommerce' );
+			}
 			status_header( $status );
 			nocache_headers();
-			wp_die( esc_html( $actor->get_error_message() ), '', array( 'response' => $status ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- an integer HTTP status, not output.
+			wp_die( esc_html( $actor->get_error_message() ), '', $args ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- an integer HTTP status and a core URL, not output.
 		}
 
 		$result = self::process( $order, $data, $actor );
@@ -155,7 +161,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 				/**
 				 * Fired when the customer closes the edit window early.
 				 *
-				 * @since 0.1.0
+				 * @since 1.0.0
 				 *
 				 * @param WC_Order $order Order.
 				 */
@@ -258,7 +264,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		/**
 		 * Fired when a customer changes their own order.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param WC_Order $order Order.
 		 * @param array    $data  changes, balance_due.
@@ -408,7 +414,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		}
 
 		$key   = isset( $_GET['key'] ) ? sanitize_text_field( wp_unslash( $_GET['key'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- the order key is the credential; checked in authorize().
-		$actor = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $order, $key );
+		$actor = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $order, $key, self::confirmed_email( $order ) );
 		if ( is_wp_error( $actor ) ) {
 			return;
 		}
@@ -597,7 +603,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 	public static function hidden_fields( array $data, $prefix = '' ) {
 		$html = '';
 		foreach ( $data as $name => $value ) {
-			if ( '' === $prefix && in_array( $name, array( '_eofw_nonce', '_wp_http_referer', 'step', 'order_id', 'order_key', 'edit_orders_for_woocommerce_action' ), true ) ) {
+			if ( '' === $prefix && in_array( $name, array( '_eofw_nonce', '_wp_http_referer', 'step', 'order_id', 'order_key', 'eofw_email', 'edit_orders_for_woocommerce_action' ), true ) ) {
 				continue;
 			}
 			$field = '' === $prefix ? (string) $name : $prefix . '[' . $name . ']';
@@ -620,10 +626,51 @@ class Edit_Orders_For_WooCommerce_Frontend {
 	 * @return string HTML.
 	 */
 	public static function form_fields( WC_Order $order, $order_key, $action ) {
+		$email = '' !== $order_key ? self::confirmed_email( $order ) : '';
+
 		return wp_nonce_field( self::NONCE, '_eofw_nonce', false, false )
 			. '<input type="hidden" name="order_id" value="' . esc_attr( $order->get_id() ) . '" />'
 			. '<input type="hidden" name="order_key" value="' . esc_attr( $order_key ) . '" />'
+			. ( '' !== $email ? '<input type="hidden" name="eofw_email" value="' . esc_attr( $email ) . '" />' : '' )
 			. '<input type="hidden" name="edit_orders_for_woocommerce_action" value="' . esc_attr( $action ) . '" />';
+	}
+
+	/**
+	 * The order's email address as a guest confirmed it on this request: typed into
+	 * WooCommerce's own check form, or carried by one of the panel's forms. Empty unless
+	 * it matches the order, so nothing else typed is ever repeated back.
+	 *
+	 * @param WC_Order $order Order.
+	 * @return string
+	 */
+	private static function confirmed_email( WC_Order $order ) {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- WooCommerce's form is checked here; the panel's in handle_post(). The address is only a credential to compare.
+		$email = '';
+		if ( isset( $_POST['email'], $_POST['check_submission'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['check_submission'] ) ), 'wc_verify_email' ) ) {
+			$email = sanitize_email( wp_unslash( $_POST['email'] ) );
+		} elseif ( isset( $_POST['eofw_email'] ) ) {
+			$email = sanitize_email( wp_unslash( $_POST['eofw_email'] ) );
+		}
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		return ( '' !== $email && 0 === strcasecmp( $email, (string) $order->get_billing_email() ) ) ? $email : '';
+	}
+
+	/**
+	 * Don't ask a guest the plugin has just checked to confirm their email again on the
+	 * same request, so the page can show the preview or error for their change. Only for
+	 * that order, and only after authorize() applied WooCommerce's own rule.
+	 *
+	 * @param bool     $required Whether WooCommerce wants the email confirmed.
+	 * @param WC_Order $order    Order.
+	 * @return bool
+	 */
+	public static function keep_confirmed_guest( $required, $order ) {
+		if ( $required && $order instanceof WC_Order && Edit_Orders_For_WooCommerce_Customer_Rules::is_confirmed_guest( $order->get_id() ) ) {
+			return false;
+		}
+
+		return $required;
 	}
 
 	/**

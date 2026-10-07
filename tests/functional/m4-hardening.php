@@ -504,6 +504,41 @@ $eo_check( 'logged in as the customer: allowed', 'customer' === Edit_Orders_For_
 $eo_guest = $eo_make_order( array( array( 'EO-MUG', 1 ) ) );
 wp_set_current_user( 0 );
 $eo_check( 'a guest order still opens with its key', 'guest' === Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $eo_guest, $eo_guest->get_order_key() ) );
+
+// ---------------------------------------------------------------------------
+WP_CLI::log( 'After WooCommerce\'s grace period a guest confirms the order\'s email, as on its own order pages' );
+// A fresh order: one already allowed on this run stays allowed for the rest of it, as on one request.
+$eo_guest = $eo_make_order( array( array( 'EO-MUG', 1 ) ) );
+$eo_guest->set_date_created( time() - HOUR_IN_SECONDS );
+$eo_guest->save();
+$eo_guest  = wc_get_order( $eo_guest->get_id() );
+$eo_key    = $eo_guest->get_order_key();
+$eo_result = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $eo_guest, $eo_key );
+$eo_check( 'an hour later, the key alone: asked to confirm the email (403)', is_wp_error( $eo_result ) && 'edit_orders_for_woocommerce_confirm_email' === $eo_result->get_error_code() && 403 === $eo_result->get_error_data()['status'] );
+$eo_check( 'not counted as a wrong key', ! Edit_Orders_For_WooCommerce_Customer_Rules::is_rate_limited() );
+$eo_result = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $eo_guest, $eo_key, 'someone@example.com' );
+$eo_check( 'with another email address: still refused', is_wp_error( $eo_result ) );
+$eo_check( 'WooCommerce is not told to skip its own check after a refusal', true === apply_filters( 'woocommerce_order_email_verification_required', true, $eo_guest, 'order-received' ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's filter.
+// WooCommerce's own comparison decides: exact before 9.x, any case later, so test the exact address.
+$eo_check( 'with the order\'s email: allowed', 'guest' === Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $eo_guest, $eo_key, $eo_guest->get_billing_email() ) );
+$eo_check( 'then WooCommerce shows this order\'s page on this request', false === apply_filters( 'woocommerce_order_email_verification_required', true, $eo_guest, 'order-received' ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's filter.
+$eo_other = $eo_make_order( array( array( 'EO-MUG', 1 ) ) );
+$eo_check( 'but no other order\'s', true === apply_filters( 'woocommerce_order_email_verification_required', true, $eo_other, 'order-received' ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's filter.
+
+// The panel's forms carry the confirmed address, and only a matching one.
+$_POST['eofw_email'] = $eo_guest->get_billing_email();
+$eo_check( 'the forms carry the confirmed email', false !== strpos( Edit_Orders_For_WooCommerce_Frontend::form_fields( $eo_guest, $eo_key, 'note' ), 'name="eofw_email"' ) );
+$_POST['eofw_email'] = 'someone@example.com';
+$eo_check( 'but never an address that isn\'t the order\'s', false === strpos( Edit_Orders_For_WooCommerce_Frontend::form_fields( $eo_guest, $eo_key, 'note' ), 'eofw_email' ) );
+unset( $_POST['eofw_email'] );
+
+// The store's grace period filter applies, as on WooCommerce's pages.
+$eo_grace = static function () {
+	return 2 * HOUR_IN_SECONDS;
+};
+add_filter( 'woocommerce_order_email_verification_grace_period', $eo_grace );
+$eo_check( 'with a two-hour grace period, the key alone works again', 'guest' === Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $eo_guest, $eo_key ) );
+remove_filter( 'woocommerce_order_email_verification_grace_period', $eo_grace );
 wp_set_current_user( 1 );
 
 // ---------------------------------------------------------------------------

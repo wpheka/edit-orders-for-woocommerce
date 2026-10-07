@@ -57,7 +57,21 @@ Run from this plugin's folder:
 | `php bin/build-zip.php` | Builds `build/edit-orders-for-woocommerce-<version>.zip`, leaving out everything in `.distignore` |
 | `npm run wp -- plugin check /tmp/eofw/edit-orders-for-woocommerce` | Plugin Check on the built copy. Extract the zip to `/tmp/eofw` in the cli container first; checking this folder flags the dev-only hidden files |
 | `NODE_PATH=/path/to/node_modules node tests/e2e/screenshots.cjs` | Recreates the six wordpress.org screenshots in `.wordpress-org/` (store must be running; the orders it makes are deleted). Look at every image before uploading |
-| `npx -y @wordpress/env@10 run cli wp i18n make-pot wp-content/plugins/edit-orders-for-woocommerce wp-content/plugins/edit-orders-for-woocommerce/languages/edit-orders-for-woocommerce.pot --exclude=tests,bin,build` | Regenerates the translation template |
+| `npx -y @wordpress/env@11 run cli wp i18n make-pot wp-content/plugins/edit-orders-for-woocommerce wp-content/plugins/edit-orders-for-woocommerce/languages/edit-orders-for-woocommerce.pot --exclude=tests,bin,build` | Regenerates the translation template |
+
+## Other PHP versions and the minimum WordPress and WooCommerce
+
+- **Another PHP version** for both sites, without editing any file: `WP_ENV_PHP_VERSION=7.4 npx -y @wordpress/env@11 start` (also `8.5`). Plain `npm run env:start` goes back to the PHP in `.wp-env.json`.
+- **The minimum versions** run on the wp-env tests site (port 8891). Put WooCommerce 9.0.0 there in `.wp-env.override.json` (not committed), then install WordPress 6.6.2 and seed it, because wp-env 11 does not apply a `core` override to an existing tests site:
+
+  ```
+  npx -y @wordpress/env@11 run tests-cli sh -c 'wp core download --version=6.6.2 --force --skip-content && wp db reset --yes && wp core install --url=http://localhost:8891 --title="Min store" --admin_user=admin --admin_password=password --admin_email=admin@example.com --skip-email && wp plugin activate woocommerce edit-orders-for-woocommerce && wp theme activate storefront'
+  npx -y @wordpress/env@11 run tests-cli wp eval-file wp-content/plugins/edit-orders-for-woocommerce/tests/env/seed.php
+  EO_CONTAINER=tests-cli bash tests/functional/run.sh
+  ```
+
+  The customer browser test switches to Twenty Twenty-Five, which needs WordPress 6.7, so it only runs on the dev site.
+- **wp-env 10** stops silently after starting MySQL with Node 26 and Docker Compose 5 (macOS, October 2026); version 11 works, so every script uses it.
 
 ## Known issues on Windows
 

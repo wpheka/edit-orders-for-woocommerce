@@ -26,7 +26,7 @@ const created = [];
 let failures = 0;
 
 function cli( command ) {
-	return execSync( `npx -y @wordpress/env@10 run cli ${ command }`, {
+	return execSync( `npx -y @wordpress/env@11 run cli ${ command }`, {
 		env: { ...process.env, MSYS_NO_PATHCONV: '1' },
 		encoding: 'utf8',
 		stdio: [ 'ignore', 'pipe', 'pipe' ],

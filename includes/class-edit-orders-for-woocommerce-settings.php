@@ -63,7 +63,7 @@ class Edit_Orders_For_WooCommerce_Settings {
 		/**
 		 * Filter a setting.
 		 *
-		 * @since 0.1.0
+		 * @since 1.0.0
 		 *
 		 * @param mixed  $value Value.
 		 * @param string $key   Setting key.
