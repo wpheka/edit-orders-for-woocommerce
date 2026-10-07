@@ -226,6 +226,29 @@ $eo_balance = is_array( $eo_result ) ? wc_get_order( $eo_result['balance_order_i
 $eo_check( 'VAT-exempt customer: no tax on the balance order, and it stays exempt', $eo_balance && 0.0 === (float) $eo_balance->get_total_tax() && 'yes' === $eo_balance->get_meta( 'is_vat_exempt' ) );
 $eo_check( 'the preview showed that same amount', $eo_balance && ! is_wp_error( $eo_plan ) && $eo_money( $eo_plan->get_balance_estimate( $eo_order ) ) === $eo_money( $eo_balance->get_total() ) );
 
+// An address change re-taxes every line for the new location: an exempt order stays untaxed.
+$eo_order = $eo_make_order( array( array( 'EO-MUG', 1 ) ) );
+$eo_order->update_meta_data( 'is_vat_exempt', 'yes' );
+$eo_order->calculate_totals();
+$eo_order->save();
+$eo_changes = array(
+	array(
+		'type'     => 'address',
+		'shipping' => array(
+			'address_1' => '100 8 Ave SW',
+			'city'      => 'Calgary',
+			'state'     => 'AB',
+			'postcode'  => 'T2P 1B3',
+		),
+	),
+);
+$eo_plan    = Edit_Orders_For_WooCommerce_Settlement_Executor::preview( $eo_order, $eo_changes );
+$eo_result  = Edit_Orders_For_WooCommerce_Settlement_Executor::apply( $eo_order, $eo_changes );
+$eo_balance = is_array( $eo_result ) && ! empty( $eo_result['balance_order_id'] ) ? wc_get_order( $eo_result['balance_order_id'] ) : null;
+$eo_check( 'VAT-exempt order moved Ontario to Alberta: no tax before the change', 0.0 === (float) $eo_order->get_total_tax() );
+$eo_check( 'it owes only the $10.00 shipping difference, with no tax added', ! is_wp_error( $eo_plan ) && '10.00' === $eo_money( $eo_plan->get_balance_estimate( $eo_order ) ) && 0.0 === (float) $eo_plan->get_refund_amount(), is_wp_error( $eo_plan ) ? $eo_plan->get_error_message() : $eo_money( $eo_plan->get_balance_estimate( $eo_order ) ) );
+$eo_check( 'the balance order charges no tax', $eo_balance && '10.00' === $eo_money( $eo_balance->get_total() ) && 0.0 === (float) $eo_balance->get_total_tax(), $eo_balance ? $eo_money( $eo_balance->get_total() ) : 'no balance order' );
+
 // Variations take their tax status from the parent product.
 // WooCommerce caches product objects within a request; a new page load reads the parent fresh.
 $eo_l = wc_get_product( $eo_product( 'EO-HOODIE-L' )->get_parent_id() );
@@ -522,6 +545,47 @@ $eo_check( 'choosing one gives the preview', 'preview' === $eo_step['type'], iss
 $eo_zone->delete_shipping_method( $eo_free );
 $wpdb->update( "{$wpdb->prefix}woocommerce_shipping_zone_methods", array( 'is_enabled' => 1 ), array( 'instance_id' => $eo_flat->get_instance_id() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 WC_Cache_Helper::get_transient_version( 'shipping', true );
+
+// ---------------------------------------------------------------------------
+WP_CLI::log( 'Cash on delivery customers are told what they pay at the door' );
+$eo_cod_panel              = static function ( WC_Order $order, array $form ) {
+	$step = Edit_Orders_For_WooCommerce_Frontend::process( $order, $form, 'guest' );
+	$args = Edit_Orders_For_WooCommerce_Frontend::panel_args( $order, $order->get_order_key() );
+
+	$args['state'] = $step;
+	return array( $step, wc_get_template_html( 'myaccount/edit-order.php', $args, 'edit-orders-for-woocommerce/', EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'templates/' ) );
+};
+$eo_order                  = $eo_make_order( array( array( 'EO-HOODIE-S', 1 ) ), 0, 'cod' );
+$eo_form                   = array(
+	'edit_orders_for_woocommerce_action' => 'swap',
+	'swap'                               => array( $eo_item_id( $eo_order, 'EO-HOODIE-S' ) => $eo_t['product']['EO-HOODIE-L'] ),
+);
+list( $eo_step, $eo_html ) = $eo_cod_panel( $eo_order, $eo_form );
+$eo_check( 'dearer size: "$5.65 more on delivery", no pay page', 'preview' === $eo_step['type'] && false !== strpos( wp_strip_all_tags( $eo_html ), '5.65 more on delivery' ) && false === strpos( $eo_html, 'next page' ), wp_strip_all_tags( $eo_html ) );
+$eo_check( 'and the button says "Confirm the change"', false !== strpos( $eo_html, 'Confirm the change' ) && false === strpos( $eo_html, 'Confirm and pay the difference' ) );
+$eo_step = Edit_Orders_For_WooCommerce_Frontend::process( $eo_order, array_merge( $eo_form, array( 'step' => 'confirm' ) ), 'guest' );
+$eo_check( 'confirming applies it straight away, without sending them to pay', 'success' === $eo_step['type'] && '' === $eo_step['redirect'], wp_json_encode( $eo_step ) );
+
+$eo_order                  = $eo_make_order( array( array( 'EO-HOODIE-S', 1 ) ), 0, 'cod' );
+list( $eo_step, $eo_html ) = $eo_cod_panel(
+	$eo_order,
+	array(
+		'edit_orders_for_woocommerce_action' => 'swap',
+		'swap'                               => array( $eo_item_id( $eo_order, 'EO-HOODIE-S' ) => $eo_t['product']['EO-HOODIE-XS'] ),
+	)
+);
+$eo_check( 'cheaper size: "$5.65 less on delivery", no refund promised', 'preview' === $eo_step['type'] && false !== strpos( wp_strip_all_tags( $eo_html ), '5.65 less on delivery' ) && false === strpos( $eo_html, 'refund' ), wp_strip_all_tags( $eo_html ) );
+
+// A paid order keeps the pay-page wording.
+$eo_order                  = $eo_make_order( array( array( 'EO-HOODIE-S', 1 ) ) );
+list( $eo_step, $eo_html ) = $eo_cod_panel(
+	$eo_order,
+	array(
+		'edit_orders_for_woocommerce_action' => 'swap',
+		'swap'                               => array( $eo_item_id( $eo_order, 'EO-HOODIE-S' ) => $eo_t['product']['EO-HOODIE-L'] ),
+	)
+);
+$eo_check( 'paid order: still "pay the difference on the next page"', false !== strpos( $eo_html, 'next page' ) && false !== strpos( $eo_html, 'Confirm and pay the difference' ) );
 
 // ---------------------------------------------------------------------------
 WP_CLI::log( 'Addresses keep backslashes' );

@@ -71,6 +71,8 @@ foreach ( $eo_fields as $eo_field ) {
 }
 $eo_check( 'status choices leave out final and unpaid statuses', in_array( 'processing', $eo_statuses, true ) && in_array( 'on-hold', $eo_statuses, true ) && ! array_intersect( array( 'completed', 'cancelled', 'refunded', 'failed', 'pending' ), $eo_statuses ) );
 
+// The settings screen sets the section; WooCommerce before 9.6 prints nothing without it.
+$GLOBALS['current_section'] = ''; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- what WooCommerce's settings screen does.
 ob_start();
 $eo_page->output();
 $eo_html = ob_get_clean();

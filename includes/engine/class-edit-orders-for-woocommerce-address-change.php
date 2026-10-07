@@ -368,7 +368,7 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 	 * @return array rate ID => amount
 	 */
 	private static function taxes_for( WC_Order $order, $item, $total, array $location, $new_rate ) {
-		if ( ! wc_tax_enabled() || $total <= 0 ) {
+		if ( ! wc_tax_enabled() || $total <= 0 || Edit_Orders_For_WooCommerce_Pricing::is_vat_exempt( $order ) ) {
 			return array();
 		}
 

@@ -7,6 +7,7 @@
 .wordpress-org
 .coderabbit.yaml
 .wpheka-quality.yml
+.wpheka-quality-reports
 .wpheka-baseline.json
 .github
 bin

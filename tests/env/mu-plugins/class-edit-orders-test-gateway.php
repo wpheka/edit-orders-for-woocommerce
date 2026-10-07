@@ -31,9 +31,11 @@ add_action(
 				$this->method_title       = 'Edit Orders test gateway';
 				$this->method_description = 'Development only. Approves payments and refunds without contacting anyone.';
 				$this->title              = 'Test payment (refunds supported)';
-				$this->has_fields         = false;
-				$this->enabled            = 'yes';
-				$this->supports           = array( 'products', 'refunds' );
+				// The pay page passes it through wp_kses_post(); null is deprecated there on PHP 8.1+.
+				$this->description = '';
+				$this->has_fields  = false;
+				$this->enabled     = 'yes';
+				$this->supports    = array( 'products', 'refunds' );
 			}
 
 			/**

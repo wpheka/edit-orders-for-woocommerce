@@ -485,7 +485,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 
 			if ( isset( $line['taxes'] ) ) {
 				$taxes = $line['taxes'];
-			} elseif ( wc_tax_enabled() && 'yes' !== $order->get_meta( 'is_vat_exempt' ) ) {
+			} elseif ( wc_tax_enabled() && ! Edit_Orders_For_WooCommerce_Pricing::is_vat_exempt( $order ) ) {
 				$taxable = false;
 				$class   = '';
 				if ( 'product' === $line['type'] ) {

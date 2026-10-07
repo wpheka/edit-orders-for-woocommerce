@@ -112,7 +112,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$balance->set_currency( $order->get_currency() );
 		$balance->set_prices_include_tax( $order->get_prices_include_tax() );
 		// A VAT-exempt customer stays exempt on what they owe for the change.
-		if ( 'yes' === $order->get_meta( 'is_vat_exempt' ) ) {
+		if ( Edit_Orders_For_WooCommerce_Pricing::is_vat_exempt( $order ) ) {
 			$balance->update_meta_data( 'is_vat_exempt', 'yes' );
 		}
 

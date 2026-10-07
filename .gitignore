@@ -6,3 +6,4 @@ build/
 # Syncthing partial transfers (the folder syncs with a second machine)
 .syncthing.*.tmp
 ~syncthing~*.tmp
+.wpheka-quality-reports/

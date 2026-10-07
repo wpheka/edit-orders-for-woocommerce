@@ -57,7 +57,13 @@ $edit_orders_for_woocommerce_currency = array( 'currency' => $order->get_currenc
 	<?php endif; ?>
 
 	<?php if ( $state && 'preview' === $state['type'] ) : ?>
-		<?php $edit_orders_for_woocommerce_preview = $state['preview']; ?>
+		<?php
+		$edit_orders_for_woocommerce_preview     = $state['preview'];
+		$edit_orders_for_woocommerce_on_delivery = ! empty( $edit_orders_for_woocommerce_preview['on_delivery'] );
+		// Paid on delivery: what changes is the amount to pay at the door, whatever mix of lines went up or down.
+		$edit_orders_for_woocommerce_door = round( (float) $edit_orders_for_woocommerce_preview['balance'] - (float) $edit_orders_for_woocommerce_preview['refund'], wc_get_price_decimals() );
+		$edit_orders_for_woocommerce_pays = $edit_orders_for_woocommerce_on_delivery ? 0 : $edit_orders_for_woocommerce_preview['balance'];
+		?>
 		<div class="eofw-preview">
 			<h3><?php esc_html_e( 'Please confirm your change', 'edit-orders-for-woocommerce' ); ?></h3>
 			<ul>
@@ -65,7 +71,15 @@ $edit_orders_for_woocommerce_currency = array( 'currency' => $order->get_currenc
 					<li><?php echo esc_html( $edit_orders_for_woocommerce_change ); ?></li>
 				<?php endforeach; ?>
 			</ul>
-			<?php if ( $edit_orders_for_woocommerce_preview['balance'] > 0 ) : ?>
+			<?php if ( $edit_orders_for_woocommerce_on_delivery && $edit_orders_for_woocommerce_door > 0 ) : ?>
+				<?php /* translators: %s: amount. */ ?>
+				<p class="eofw-money"><?php printf( esc_html__( 'You will pay %s more on delivery.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $edit_orders_for_woocommerce_door, $edit_orders_for_woocommerce_currency ) ) ); ?></p>
+			<?php elseif ( $edit_orders_for_woocommerce_on_delivery && $edit_orders_for_woocommerce_door < 0 ) : ?>
+				<?php /* translators: %s: amount. */ ?>
+				<p class="eofw-money"><?php printf( esc_html__( 'You will pay %s less on delivery.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( abs( $edit_orders_for_woocommerce_door ), $edit_orders_for_woocommerce_currency ) ) ); ?></p>
+			<?php elseif ( $edit_orders_for_woocommerce_on_delivery ) : ?>
+				<p class="eofw-money"><?php esc_html_e( 'The price does not change.', 'edit-orders-for-woocommerce' ); ?></p>
+			<?php elseif ( $edit_orders_for_woocommerce_preview['balance'] > 0 ) : ?>
 				<?php /* translators: %s: amount. */ ?>
 				<p class="eofw-money"><?php printf( esc_html__( 'This change costs %s more. You will pay the difference on the next page; until then your order stays as it is.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $edit_orders_for_woocommerce_preview['balance'], $edit_orders_for_woocommerce_currency ) ) ); ?></p>
 				<?php if ( $edit_orders_for_woocommerce_preview['refund'] > 0 ) : ?>
@@ -82,7 +96,7 @@ $edit_orders_for_woocommerce_currency = array( 'currency' => $order->get_currenc
 				<?php echo Edit_Orders_For_WooCommerce_Frontend::form_fields( $order, $order_key, $state['action'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts. ?>
 				<?php echo Edit_Orders_For_WooCommerce_Frontend::hidden_fields( $edit_orders_for_woocommerce_preview['fields'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts. ?>
 				<input type="hidden" name="step" value="confirm" />
-				<button type="submit" class="button wp-element-button"><?php echo esc_html( $edit_orders_for_woocommerce_preview['balance'] > 0 ? __( 'Confirm and pay the difference', 'edit-orders-for-woocommerce' ) : __( 'Confirm the change', 'edit-orders-for-woocommerce' ) ); ?></button>
+				<button type="submit" class="button wp-element-button"><?php echo esc_html( $edit_orders_for_woocommerce_pays > 0 ? __( 'Confirm and pay the difference', 'edit-orders-for-woocommerce' ) : __( 'Confirm the change', 'edit-orders-for-woocommerce' ) ); ?></button>
 				<a href="#edit-order" class="eofw-back"><?php esc_html_e( 'Make a different change', 'edit-orders-for-woocommerce' ); ?></a>
 			</form>
 		</div>

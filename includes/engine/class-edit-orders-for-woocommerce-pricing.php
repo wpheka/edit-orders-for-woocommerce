@@ -27,6 +27,17 @@ class Edit_Orders_For_WooCommerce_Pricing {
 	}
 
 	/**
+	 * Whether the order is free of tax, decided as WooCommerce decides it when it
+	 * calculates an order's taxes (including the filter tax-exemption plugins use).
+	 *
+	 * @param WC_Order $order Order.
+	 * @return bool
+	 */
+	public static function is_vat_exempt( WC_Order $order ) {
+		return (bool) apply_filters( 'woocommerce_order_is_vat_exempt', 'yes' === $order->get_meta( 'is_vat_exempt' ), $order ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own filter.
+	}
+
+	/**
 	 * The ratio of what was paid to the list price for a line: 0.8 for a 20% coupon.
 	 *
 	 * @param WC_Order_Item_Product $item Line.

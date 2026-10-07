@@ -228,10 +228,12 @@ class Edit_Orders_For_WooCommerce_Frontend {
 				'message'  => '',
 				'redirect' => '',
 				'preview'  => array(
-					'changes' => $plan->get_descriptions(),
-					'refund'  => $plan->get_refund_amount(),
-					'balance' => $plan->get_balance_estimate( $order ),
-					'fields'  => $fields,
+					'changes'     => $plan->get_descriptions(),
+					'refund'      => $plan->get_refund_amount(),
+					'balance'     => $plan->get_balance_estimate( $order ),
+					// Unpaid cash on delivery: no pay page and no refund, only a new amount to collect.
+					'on_delivery' => Edit_Orders_For_WooCommerce_Eligibility::is_pay_on_delivery( $order ),
+					'fields'      => $fields,
 				),
 			);
 		}

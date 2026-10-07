@@ -1,0 +1,38 @@
+# WPHEKA Quality configuration for Edit Orders for WooCommerce.
+
+project_type: woocommerce-plugin
+
+php:
+  minimum: "7.4"
+
+wordpress:
+  required: true
+
+woocommerce:
+  required: true
+  hpos: true
+  blocks: true
+
+checks:
+  php_syntax: true
+  git_diff_check: true
+  phpcs: true
+  phpstan: true
+  phpunit: true
+  composer_validate: true
+  composer_audit: true
+  semgrep: true
+  gitleaks: true
+  plugin_check: true
+  # Reviewed separately with a whole-plugin CodeRabbit run: the gate's uncommitted
+  # mode reviews nothing on a clean tree and would only spend a slot of the quota.
+  coderabbit: false
+  npm: false
+
+exclude:
+  - languages/
+  # The functional and browser suites drive the store from outside; they never ship
+  # (.distignore leaves out tests/), so they are not held to plugin standards.
+  - tests/
+
+fail_on: error

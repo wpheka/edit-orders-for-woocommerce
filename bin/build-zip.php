@@ -27,6 +27,11 @@ $version = $match[1];
 $ignore = array_filter( array_map( 'trim', file( $root . '/.distignore' ) ) );
 
 $skip = function ( $relative ) use ( $ignore ) {
+	// Hidden files and folders never ship (wordpress.org refuses them). A list alone kept
+	// missing new ones: .git, Syncthing temp files, the quality gate's reports.
+	if ( preg_match( '#(^|/)\.#', $relative ) ) {
+		return true;
+	}
 	foreach ( $ignore as $pattern ) {
 		$pattern = rtrim( $pattern, '/' );
 		if ( $relative === $pattern || 0 === strpos( $relative, $pattern . '/' ) || fnmatch( $pattern, basename( $relative ) ) ) {
