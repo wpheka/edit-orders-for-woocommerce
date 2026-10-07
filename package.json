@@ -1,0 +1,15 @@
+{
+	"name": "edit-orders-for-woocommerce",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Edit WooCommerce orders after payment and settle the difference correctly.",
+	"license": "GPL-3.0-or-later",
+	"scripts": {
+		"env:start": "npx -y @wordpress/env@10 start",
+		"env:stop": "npx -y @wordpress/env@10 stop",
+		"env:seed": "npx -y @wordpress/env@10 run cli wp eval-file wp-content/plugins/edit-orders-for-woocommerce/tests/env/seed.php",
+		"env:clean": "npx -y @wordpress/env@10 clean all",
+		"env:destroy": "npx -y @wordpress/env@10 destroy",
+		"wp": "npx -y @wordpress/env@10 run cli wp"
+	}
+}

@@ -1,0 +1,4 @@
+node_modules/
+.wp-env.override.json
+.e2e-screens/
+build/

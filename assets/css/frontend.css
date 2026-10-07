@@ -1,0 +1,71 @@
+/* Edit Orders for WooCommerce: customer panel. Kept light so it takes the theme's look. */
+
+.eofw-panel {
+	margin: 2em 0;
+	padding: 1.25em 1.5em;
+	border: 1px solid rgba(0, 0, 0, 0.12);
+	border-radius: 4px;
+}
+
+.eofw-panel h2 {
+	margin-top: 0;
+}
+
+.eofw-panel .eofw-window strong {
+	font-variant-numeric: tabular-nums;
+}
+
+.eofw-panel .eofw-close {
+	margin-bottom: 1em;
+}
+
+.eofw-panel details.eofw-action {
+	border-top: 1px solid rgba(0, 0, 0, 0.08);
+	padding: 0.75em 0;
+}
+
+.eofw-panel details.eofw-action summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.eofw-panel details.eofw-action form {
+	margin-top: 0.75em;
+}
+
+.eofw-panel label {
+	display: block;
+	margin-bottom: 0.25em;
+}
+
+.eofw-panel select,
+.eofw-panel input.input-text,
+.eofw-panel textarea {
+	width: 100%;
+	max-width: 32em;
+	box-sizing: border-box;
+}
+
+.eofw-panel .eofw-hint,
+.eofw-panel .eofw-policy {
+	font-size: 0.9em;
+	opacity: 0.8;
+}
+
+.eofw-panel .eofw-preview {
+	margin: 1em 0;
+	padding: 1em;
+	background: rgba(0, 0, 0, 0.03);
+}
+
+.eofw-panel .eofw-preview .eofw-money {
+	font-weight: 600;
+}
+
+.eofw-panel .eofw-back {
+	margin-left: 1em;
+}
+
+.eofw-panel [hidden] {
+	display: none !important;
+}

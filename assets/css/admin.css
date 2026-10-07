@@ -1,0 +1,75 @@
+/* Edit Orders for WooCommerce: editor page and order screen box. */
+
+.edit-orders-editor .edit-orders-items {
+	max-width: 960px;
+}
+
+.edit-orders-editor .edit-orders-items tr.is-locked td {
+	opacity: 0.6;
+}
+
+.edit-orders-editor .edit-orders-add {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.edit-orders-editor .edit-orders-added li {
+	margin: 4px 0;
+}
+
+.edit-orders-editor .edit-orders-addresses {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 24px;
+}
+
+.edit-orders-editor .edit-orders-address {
+	flex: 1 1 320px;
+	border: 1px solid #dcdcde;
+	padding: 8px 16px;
+	background: #fff;
+}
+
+.edit-orders-editor .edit-orders-address legend {
+	font-weight: 600;
+	padding: 0 4px;
+}
+
+.edit-orders-preview {
+	max-width: 960px;
+	margin-top: 16px;
+	padding: 8px 16px 16px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+}
+
+.edit-orders-preview .edit-orders-diff tr.is-removed td {
+	text-decoration: line-through;
+	color: #b32d2e;
+}
+
+.edit-orders-preview .edit-orders-diff tr.is-added td,
+.edit-orders-preview .edit-orders-diff tr.is-changed td {
+	font-weight: 600;
+}
+
+.edit-orders-preview .edit-orders-money p {
+	font-size: 14px;
+	margin: 8px 0;
+}
+
+#edit-orders-for-woocommerce .edit-orders-manual-refund {
+	color: #b32d2e;
+}
+
+#edit-orders-for-woocommerce .edit-orders-balances li {
+	border-top: 1px solid #f0f0f1;
+	padding-top: 6px;
+}
+
+#edit-orders-for-woocommerce .edit-orders-pay-link {
+	margin: 4px 0;
+	font-size: 11px;
+}
