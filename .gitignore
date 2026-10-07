@@ -2,3 +2,7 @@ node_modules/
 .wp-env.override.json
 .e2e-screens/
 build/
+
+# Syncthing partial transfers (the folder syncs with a second machine)
+.syncthing.*.tmp
+~syncthing~*.tmp
