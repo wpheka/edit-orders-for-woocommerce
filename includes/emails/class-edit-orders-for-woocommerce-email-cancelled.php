@@ -18,8 +18,8 @@ class Edit_Orders_For_WooCommerce_Email_Cancelled extends Edit_Orders_For_WooCom
 	public function __construct() {
 		$this->id             = 'edit_orders_for_woocommerce_cancelled';
 		$this->customer_email = true;
-		$this->title          = __( 'Order cancelled at your request', 'edit-orders-for-woocommerce' );
-		$this->description    = __( 'Sent to the customer when their cancellation is made, at once or after the store approves it, with the refund.', 'edit-orders-for-woocommerce' );
+		$this->title          = __( 'Order cancelled at your request', 'wpheka-edit-orders-for-woocommerce' );
+		$this->description    = __( 'Sent to the customer when their cancellation is made, at once or after the store approves it, with the refund.', 'wpheka-edit-orders-for-woocommerce' );
 		$this->template_html  = 'emails/edit-orders-cancelled.php';
 		$this->template_plain = 'emails/plain/edit-orders-cancelled.php';
 
@@ -32,7 +32,7 @@ class Edit_Orders_For_WooCommerce_Email_Cancelled extends Edit_Orders_For_WooCom
 	 * @return string
 	 */
 	public function get_default_subject() {
-		return __( 'Your {site_title} order #{order_number} is cancelled', 'edit-orders-for-woocommerce' );
+		return __( 'Your {site_title} order #{order_number} is cancelled', 'wpheka-edit-orders-for-woocommerce' );
 	}
 
 	/**
@@ -41,6 +41,6 @@ class Edit_Orders_For_WooCommerce_Email_Cancelled extends Edit_Orders_For_WooCom
 	 * @return string
 	 */
 	public function get_default_heading() {
-		return __( 'Your order is cancelled', 'edit-orders-for-woocommerce' );
+		return __( 'Your order is cancelled', 'wpheka-edit-orders-for-woocommerce' );
 	}
 }

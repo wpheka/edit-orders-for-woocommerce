@@ -90,4 +90,29 @@ final class Edit_Orders_For_WooCommerce {
 			Edit_Orders_For_WooCommerce_Activity::init();
 		}
 	}
+
+	/**
+	 * Sanitise a posted form on the way in: every value as a single line of text, except
+	 * the fields customers write in several lines (their order note and cancel reason).
+	 * Nested arrays (addresses, items) are cleaned the same way. Callers still validate
+	 * each field for its meaning (IDs, amounts, emails).
+	 *
+	 * @param array $data Unslashed form data.
+	 * @return array
+	 */
+	public static function sanitize_request( array $data ) {
+		$clean = array();
+		foreach ( $data as $key => $value ) {
+			$key = is_int( $key ) ? $key : sanitize_text_field( (string) $key );
+			if ( is_array( $value ) ) {
+				$clean[ $key ] = self::sanitize_request( $value );
+			} elseif ( in_array( $key, array( 'customer_note', 'reason_other' ), true ) ) {
+				$clean[ $key ] = sanitize_textarea_field( (string) $value );
+			} else {
+				$clean[ $key ] = sanitize_text_field( (string) $value );
+			}
+		}
+
+		return $clean;
+	}
 }

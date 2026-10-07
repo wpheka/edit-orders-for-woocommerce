@@ -61,7 +61,7 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 			if ( isset( $change['item_id'] ) ) {
 				if ( isset( $seen_items[ $change['item_id'] ] ) ) {
 					/* translators: %d: order item ID. */
-					$this->errors[] = sprintf( __( 'Item %d is changed more than once.', 'edit-orders-for-woocommerce' ), $change['item_id'] );
+					$this->errors[] = sprintf( __( 'Item %d is changed more than once.', 'wpheka-edit-orders-for-woocommerce' ), $change['item_id'] );
 					continue;
 				}
 				$seen_items[ $change['item_id'] ] = true;
@@ -71,11 +71,11 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 		}
 
 		if ( count( $this->changes ) > 1 && in_array( 'address', wp_list_pluck( $this->changes, 'type' ), true ) ) {
-			$this->errors[] = __( 'Change the address on its own, then make the other changes.', 'edit-orders-for-woocommerce' );
+			$this->errors[] = __( 'Change the address on its own, then make the other changes.', 'wpheka-edit-orders-for-woocommerce' );
 		}
 
 		if ( empty( $this->changes ) && empty( $this->errors ) ) {
-			$this->errors[] = __( 'Nothing to change.', 'edit-orders-for-woocommerce' );
+			$this->errors[] = __( 'Nothing to change.', 'wpheka-edit-orders-for-woocommerce' );
 		}
 	}
 
@@ -91,7 +91,7 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 		switch ( $type ) {
 			case 'quantity':
 				if ( empty( $change['item_id'] ) || ! isset( $change['quantity'] ) || ! is_numeric( $change['quantity'] ) || $change['quantity'] < 0 ) {
-					return __( 'A quantity change needs an item and a quantity of zero or more.', 'edit-orders-for-woocommerce' );
+					return __( 'A quantity change needs an item and a quantity of zero or more.', 'wpheka-edit-orders-for-woocommerce' );
 				}
 				$quantity = (int) $change['quantity'];
 
@@ -111,7 +111,7 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 
 			case 'remove':
 				if ( empty( $change['item_id'] ) ) {
-					return __( 'A removal needs an item.', 'edit-orders-for-woocommerce' );
+					return __( 'A removal needs an item.', 'wpheka-edit-orders-for-woocommerce' );
 				}
 				return array(
 					'type'    => 'remove',
@@ -120,7 +120,7 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 
 			case 'swap':
 				if ( empty( $change['item_id'] ) || empty( $change['variation_id'] ) ) {
-					return __( 'A swap needs an item and a variation.', 'edit-orders-for-woocommerce' );
+					return __( 'A swap needs an item and a variation.', 'wpheka-edit-orders-for-woocommerce' );
 				}
 				return array(
 					'type'         => 'swap',
@@ -130,7 +130,7 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 
 			case 'add':
 				if ( empty( $change['product_id'] ) || empty( $change['quantity'] ) || (int) $change['quantity'] < 1 ) {
-					return __( 'Adding a product needs a product and a quantity of one or more.', 'edit-orders-for-woocommerce' );
+					return __( 'Adding a product needs a product and a quantity of one or more.', 'wpheka-edit-orders-for-woocommerce' );
 				}
 				$add = array(
 					'type'       => 'add',
@@ -139,7 +139,7 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 				);
 				if ( isset( $change['price'] ) && '' !== $change['price'] ) {
 					if ( ! is_numeric( $change['price'] ) || $change['price'] < 0 ) {
-						return __( 'The price for an added product must be zero or more.', 'edit-orders-for-woocommerce' );
+						return __( 'The price for an added product must be zero or more.', 'wpheka-edit-orders-for-woocommerce' );
 					}
 					$add['price'] = wc_format_decimal( $change['price'] );
 				}
@@ -153,7 +153,7 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 					}
 				}
 				if ( 1 === count( $address ) ) {
-					return __( 'An address change needs a billing or shipping address.', 'edit-orders-for-woocommerce' );
+					return __( 'An address change needs a billing or shipping address.', 'wpheka-edit-orders-for-woocommerce' );
 				}
 				if ( ! empty( $change['shipping_method'] ) ) {
 					$address['shipping_method'] = sanitize_text_field( $change['shipping_method'] );
@@ -161,7 +161,7 @@ class Edit_Orders_For_WooCommerce_Change_Set {
 				return $address;
 		}
 
-		return __( 'Unknown change.', 'edit-orders-for-woocommerce' );
+		return __( 'Unknown change.', 'wpheka-edit-orders-for-woocommerce' );
 	}
 
 	/**

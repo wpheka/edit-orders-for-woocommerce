@@ -39,7 +39,7 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 	 */
 	public static function build( WC_Order $order, array $change ) {
 		if ( (float) $order->get_total_refunded() > 0 ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_address_refunded', __( 'This order already has a refund, so its address can no longer be changed here.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_address_refunded', __( 'This order already has a refund, so its address can no longer be changed here.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		$old_billing  = $order->get_address( 'billing' );
@@ -63,7 +63,7 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 				$new_shipping = $merged;
 			}
 			/* translators: 1: address type, 2: place. */
-			$descriptions[] = sprintf( __( '%1$s address changed to %2$s.', 'edit-orders-for-woocommerce' ), 'billing' === $type ? __( 'Billing', 'edit-orders-for-woocommerce' ) : __( 'Shipping', 'edit-orders-for-woocommerce' ), self::describe( $merged ) );
+			$descriptions[] = sprintf( __( '%1$s address changed to %2$s.', 'wpheka-edit-orders-for-woocommerce' ), 'billing' === $type ? __( 'Billing', 'wpheka-edit-orders-for-woocommerce' ) : __( 'Shipping', 'wpheka-edit-orders-for-woocommerce' ), self::describe( $merged ) );
 		}
 
 		$old_location = self::tax_location( $old_billing, $old_shipping );
@@ -75,7 +75,7 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 		$new_rate       = null;
 		if ( $shipping_items && self::destination( $old_shipping ) !== self::destination( $new_shipping ) ) {
 			if ( count( $shipping_items ) > 1 ) {
-				return new WP_Error( 'edit_orders_for_woocommerce_address_shipping_lines', __( 'This order has more than one shipping line. Change its address in WooCommerce and adjust the shipping by hand.', 'edit-orders-for-woocommerce' ) );
+				return new WP_Error( 'edit_orders_for_woocommerce_address_shipping_lines', __( 'This order has more than one shipping line. Change its address in WooCommerce and adjust the shipping by hand.', 'wpheka-edit-orders-for-woocommerce' ) );
 			}
 			$new_rate = self::rerate( $order, $new_shipping, current( $shipping_items ), isset( $change['shipping_method'] ) ? (string) $change['shipping_method'] : '' );
 			if ( is_wp_error( $new_rate ) ) {
@@ -158,7 +158,7 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 				if ( $line['is_shipping'] && $line['ex_delta'] > 0 ) {
 					$balance_items[] = array(
 						'type'        => 'shipping',
-						'name'        => $new_rate ? $new_rate['label'] : __( 'Shipping', 'edit-orders-for-woocommerce' ),
+						'name'        => $new_rate ? $new_rate['label'] : __( 'Shipping', 'wpheka-edit-orders-for-woocommerce' ),
 						'method_id'   => $new_rate ? $new_rate['method_id'] : '',
 						'instance_id' => $new_rate ? $new_rate['instance_id'] : 0,
 						'total'       => $line['ex_delta'],
@@ -181,7 +181,7 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 			if ( $new_tax ) {
 				$balance_items[] = array(
 					'type'      => 'fee',
-					'name'      => __( 'Tax for the new address', 'edit-orders-for-woocommerce' ),
+					'name'      => __( 'Tax for the new address', 'wpheka-edit-orders-for-woocommerce' ),
 					'tax_class' => '',
 					'total'     => 0,
 					'taxes'     => $new_tax,
@@ -192,7 +192,7 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 		if ( $new_rate ) {
 			$descriptions[] = sprintf(
 				/* translators: 1: old shipping cost, 2: new shipping cost, 3: method name. */
-				__( 'Shipping re-rated from %1$s to %2$s (%3$s).', 'edit-orders-for-woocommerce' ),
+				__( 'Shipping re-rated from %1$s to %2$s (%3$s).', 'wpheka-edit-orders-for-woocommerce' ),
 				html_entity_decode( wp_strip_all_tags( wc_price( current( $shipping_items )->get_total(), array( 'currency' => $order->get_currency() ) ) ) ),
 				html_entity_decode( wp_strip_all_tags( wc_price( $new_rate['cost'], array( 'currency' => $order->get_currency() ) ) ) ),
 				$new_rate['label']
@@ -286,16 +286,16 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 		$countries = 'shipping' === $type ? WC()->countries->get_shipping_countries() : WC()->countries->get_allowed_countries();
 
 		if ( '' === $address['country'] || ! isset( $countries[ $address['country'] ] ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_address_country', __( 'The store does not sell to that country.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_address_country', __( 'The store does not sell to that country.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		$states = WC()->countries->get_states( $address['country'] );
 		if ( is_array( $states ) && $states && ! isset( $states[ $address['state'] ] ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_address_state', __( 'Choose a valid state or province.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_address_state', __( 'Choose a valid state or province.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		if ( '' !== $address['postcode'] && ! WC_Validation::is_postcode( $address['postcode'], $address['country'] ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_address_postcode', __( 'That postcode is not valid for the country.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_address_postcode', __( 'That postcode is not valid for the country.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		return true;
@@ -515,7 +515,7 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 		remove_filter( 'woocommerce_shipping_method_add_rate_args', $no_tax );
 
 		if ( '' !== $chosen ) {
-			return isset( $rates[ $chosen ] ) ? $rates[ $chosen ] : new WP_Error( 'edit_orders_for_woocommerce_address_rate', __( 'That shipping option is not available for the new address.', 'edit-orders-for-woocommerce' ) );
+			return isset( $rates[ $chosen ] ) ? $rates[ $chosen ] : new WP_Error( 'edit_orders_for_woocommerce_address_rate', __( 'That shipping option is not available for the new address.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		foreach ( $rates as $rate ) {
@@ -527,8 +527,8 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 		return new WP_Error(
 			'edit_orders_for_woocommerce_address_choose_rate',
 			$rates
-				? __( 'The current shipping method is not available for the new address. Choose another one.', 'edit-orders-for-woocommerce' )
-				: __( 'No shipping is available to the new address.', 'edit-orders-for-woocommerce' ),
+				? __( 'The current shipping method is not available for the new address. Choose another one.', 'wpheka-edit-orders-for-woocommerce' )
+				: __( 'No shipping is available to the new address.', 'wpheka-edit-orders-for-woocommerce' ),
 			array( 'rates' => $rates )
 		);
 	}

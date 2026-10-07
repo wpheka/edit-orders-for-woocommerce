@@ -39,10 +39,10 @@ class Edit_Orders_For_WooCommerce_Settings {
 			'cancel_reasons'         => implode(
 				"\n",
 				array(
-					__( 'Ordered by mistake', 'edit-orders-for-woocommerce' ),
-					__( 'Found a better price', 'edit-orders-for-woocommerce' ),
-					__( 'Delivery takes too long', 'edit-orders-for-woocommerce' ),
-					__( 'Need to change the order', 'edit-orders-for-woocommerce' ),
+					__( 'Ordered by mistake', 'wpheka-edit-orders-for-woocommerce' ),
+					__( 'Found a better price', 'wpheka-edit-orders-for-woocommerce' ),
+					__( 'Delivery takes too long', 'wpheka-edit-orders-for-woocommerce' ),
+					__( 'Need to change the order', 'wpheka-edit-orders-for-woocommerce' ),
 				)
 			),
 			'cancel_reason_required' => 'no',

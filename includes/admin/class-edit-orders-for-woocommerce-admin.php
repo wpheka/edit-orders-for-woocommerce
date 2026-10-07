@@ -66,7 +66,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 	 * @return string[]
 	 */
 	public static function plugin_links( $links ) {
-		array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=edit_orders' ) ) . '">' . esc_html__( 'Settings', 'edit-orders-for-woocommerce' ) . '</a>' );
+		array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=edit_orders' ) ) . '">' . esc_html__( 'Settings', 'wpheka-edit-orders-for-woocommerce' ) . '</a>' );
 
 		return $links;
 	}
@@ -79,7 +79,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 	 * locks everyone out.
 	 */
 	public static function register_page() {
-		add_submenu_page( 'woocommerce', __( 'Edit order', 'edit-orders-for-woocommerce' ), __( 'Edit order', 'edit-orders-for-woocommerce' ), self::CAPABILITY, self::PAGE, array( __CLASS__, 'render_editor' ) );
+		add_submenu_page( 'woocommerce', __( 'Edit order', 'wpheka-edit-orders-for-woocommerce' ), __( 'Edit order', 'wpheka-edit-orders-for-woocommerce' ), self::CAPABILITY, self::PAGE, array( __CLASS__, 'render_editor' ) );
 		add_action( 'admin_head', array( __CLASS__, 'hide_page_from_menu' ) );
 	}
 
@@ -111,7 +111,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 	 */
 	public static function add_meta_box() {
 		foreach ( array( wc_get_page_screen_id( 'shop-order' ), 'shop_order' ) as $screen ) {
-			add_meta_box( 'edit-orders-for-woocommerce', __( 'Edit order', 'edit-orders-for-woocommerce' ), array( __CLASS__, 'render_meta_box' ), $screen, 'side', 'high' );
+			add_meta_box( 'edit-orders-for-woocommerce', __( 'Edit order', 'wpheka-edit-orders-for-woocommerce' ), array( __CLASS__, 'render_meta_box' ), $screen, 'side', 'high' );
 		}
 	}
 
@@ -131,7 +131,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 			echo '<p>';
 			printf(
 				/* translators: %s: link to the original order. */
-				esc_html__( 'This is a balance order for changes to %s.', 'edit-orders-for-woocommerce' ),
+				esc_html__( 'This is a balance order for changes to %s.', 'wpheka-edit-orders-for-woocommerce' ),
 				$parent ? '<a href="' . esc_url( $parent->get_edit_order_url() ) . '">#' . esc_html( $parent->get_order_number() ) . '</a>' : ''
 			);
 			echo '</p>';
@@ -142,26 +142,26 @@ class Edit_Orders_For_WooCommerce_Admin {
 		if ( $manual ) {
 			echo '<p class="edit-orders-manual-refund"><strong>';
 			/* translators: %s: amount. */
-			printf( esc_html__( 'Manual refund needed: %s', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $manual, array( 'currency' => $order->get_currency() ) ) ) );
+			printf( esc_html__( 'Manual refund needed: %s', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $manual, array( 'currency' => $order->get_currency() ) ) ) );
 			echo '</strong></p>';
 		}
 
 		if ( 'pending' === $order->get_meta( Edit_Orders_For_WooCommerce_Cancellation::STATUS_META ) ) {
 			$request = (array) $order->get_meta( Edit_Orders_For_WooCommerce_Cancellation::REQUEST_META );
-			echo '<div class="edit-orders-cancel-request"><p><strong>' . esc_html__( 'The customer asked to cancel this order.', 'edit-orders-for-woocommerce' ) . '</strong>';
+			echo '<div class="edit-orders-cancel-request"><p><strong>' . esc_html__( 'The customer asked to cancel this order.', 'wpheka-edit-orders-for-woocommerce' ) . '</strong>';
 			if ( ! empty( $request['reason'] ) ) {
 				/* translators: %s: reason. */
-				echo '<br />' . esc_html( sprintf( __( 'Reason: %s', 'edit-orders-for-woocommerce' ), $request['reason'] ) );
+				echo '<br />' . esc_html( sprintf( __( 'Reason: %s', 'wpheka-edit-orders-for-woocommerce' ), $request['reason'] ) );
 			}
-			echo '</p><p><a class="button button-primary" href="' . esc_url( Edit_Orders_For_WooCommerce_Activity::approve_url( $order, $order->get_edit_order_url() ) ) . '">' . esc_html__( 'Approve and refund', 'edit-orders-for-woocommerce' ) . '</a> ';
-			echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . Edit_Orders_For_WooCommerce_Activity::PAGE ) ) . '">' . esc_html__( 'Decline with a message', 'edit-orders-for-woocommerce' ) . '</a></p></div>';
+			echo '</p><p><a class="button button-primary" href="' . esc_url( Edit_Orders_For_WooCommerce_Activity::approve_url( $order, $order->get_edit_order_url() ) ) . '">' . esc_html__( 'Approve and refund', 'wpheka-edit-orders-for-woocommerce' ) . '</a> ';
+			echo '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=' . Edit_Orders_For_WooCommerce_Activity::PAGE ) ) . '">' . esc_html__( 'Decline with a message', 'wpheka-edit-orders-for-woocommerce' ) . '</a></p></div>';
 		}
 
 		$eligible = Edit_Orders_For_WooCommerce_Eligibility::check_order( $order );
 		if ( is_wp_error( $eligible ) ) {
 			echo '<p class="description">' . esc_html( $eligible->get_error_message() ) . '</p>';
 		} else {
-			echo '<p><a class="button button-primary" href="' . esc_url( self::editor_url( $order->get_id() ) ) . '">' . esc_html__( 'Edit items or address', 'edit-orders-for-woocommerce' ) . '</a></p>';
+			echo '<p><a class="button button-primary" href="' . esc_url( self::editor_url( $order->get_id() ) ) . '">' . esc_html__( 'Edit items or address', 'wpheka-edit-orders-for-woocommerce' ) . '</a></p>';
 		}
 
 		$balances = wc_get_orders(
@@ -176,7 +176,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 			return;
 		}
 
-		echo '<h4>' . esc_html__( 'Balance orders', 'edit-orders-for-woocommerce' ) . '</h4><ul class="edit-orders-balances" data-order="' . esc_attr( $order->get_id() ) . '">';
+		echo '<h4>' . esc_html__( 'Balance orders', 'wpheka-edit-orders-for-woocommerce' ) . '</h4><ul class="edit-orders-balances" data-order="' . esc_attr( $order->get_id() ) . '">';
 		foreach ( $balances as $balance ) {
 			$open = in_array( $balance->get_status(), Edit_Orders_For_WooCommerce_Balance_Orders::OPEN_STATUSES, true );
 			echo '<li data-balance="' . esc_attr( $balance->get_id() ) . '">';
@@ -185,8 +185,8 @@ class Edit_Orders_For_WooCommerce_Admin {
 			echo '<mark class="order-status status-' . esc_attr( $balance->get_status() ) . '"><span>' . esc_html( wc_get_order_status_name( $balance->get_status() ) ) . '</span></mark>';
 			if ( $open && 'pending' === $balance->get_status() ) {
 				echo '<input type="text" readonly class="widefat edit-orders-pay-link" value="' . esc_attr( $balance->get_checkout_payment_url() ) . '" onfocus="this.select();" />';
-				echo '<button type="button" class="button-link edit-orders-resend">' . esc_html__( 'Resend pay link', 'edit-orders-for-woocommerce' ) . '</button> | ';
-				echo '<button type="button" class="button-link edit-orders-cancel-balance">' . esc_html__( 'Cancel', 'edit-orders-for-woocommerce' ) . '</button>';
+				echo '<button type="button" class="button-link edit-orders-resend">' . esc_html__( 'Resend pay link', 'wpheka-edit-orders-for-woocommerce' ) . '</button> | ';
+				echo '<button type="button" class="button-link edit-orders-cancel-balance">' . esc_html__( 'Cancel', 'wpheka-edit-orders-for-woocommerce' ) . '</button>';
 			}
 			echo '</li>';
 		}
@@ -222,10 +222,10 @@ class Edit_Orders_For_WooCommerce_Admin {
 				'nonce'   => wp_create_nonce( self::NONCE ),
 				'states'  => WC()->countries->get_states(),
 				'i18n'    => array(
-					'working'       => __( 'Working...', 'edit-orders-for-woocommerce' ),
-					'error'         => __( 'Something went wrong. Reload the page and try again.', 'edit-orders-for-woocommerce' ),
-					'confirmCancel' => __( 'Cancel this balance order? The changes waiting for it will not be made.', 'edit-orders-for-woocommerce' ),
-					'sent'          => __( 'Pay link sent.', 'edit-orders-for-woocommerce' ),
+					'working'       => __( 'Working...', 'wpheka-edit-orders-for-woocommerce' ),
+					'error'         => __( 'Something went wrong. Reload the page and try again.', 'wpheka-edit-orders-for-woocommerce' ),
+					'confirmCancel' => __( 'Cancel this balance order? The changes waiting for it will not be made.', 'wpheka-edit-orders-for-woocommerce' ),
+					'sent'          => __( 'Pay link sent.', 'wpheka-edit-orders-for-woocommerce' ),
 				),
 			)
 		);
@@ -242,13 +242,13 @@ class Edit_Orders_For_WooCommerce_Admin {
 		echo '<div class="wrap edit-orders-editor">';
 
 		if ( ! $order || ! current_user_can( self::CAPABILITY ) ) {
-			echo '<h1>' . esc_html__( 'Edit order', 'edit-orders-for-woocommerce' ) . '</h1><p>' . esc_html__( 'Order not found.', 'edit-orders-for-woocommerce' ) . '</p></div>';
+			echo '<h1>' . esc_html__( 'Edit order', 'wpheka-edit-orders-for-woocommerce' ) . '</h1><p>' . esc_html__( 'Order not found.', 'wpheka-edit-orders-for-woocommerce' ) . '</p></div>';
 			return;
 		}
 
 		/* translators: %s: order number. */
-		echo '<h1>' . esc_html( sprintf( __( 'Edit order #%s', 'edit-orders-for-woocommerce' ), $order->get_order_number() ) ) . '</h1>';
-		echo '<p><a href="' . esc_url( $order->get_edit_order_url() ) . '">&larr; ' . esc_html__( 'Back to the order', 'edit-orders-for-woocommerce' ) . '</a></p>';
+		echo '<h1>' . esc_html( sprintf( __( 'Edit order #%s', 'wpheka-edit-orders-for-woocommerce' ), $order->get_order_number() ) ) . '</h1>';
+		echo '<p><a href="' . esc_url( $order->get_edit_order_url() ) . '">&larr; ' . esc_html__( 'Back to the order', 'wpheka-edit-orders-for-woocommerce' ) . '</a></p>';
 
 		$eligible = Edit_Orders_For_WooCommerce_Eligibility::check_order( $order );
 		if ( is_wp_error( $eligible ) ) {
@@ -262,21 +262,21 @@ class Edit_Orders_For_WooCommerce_Admin {
 		echo '<p class="description">';
 		echo esc_html(
 			$on_delivery
-				? __( 'Paid on delivery: changes adjust the amount to collect.', 'edit-orders-for-woocommerce' )
+				? __( 'Paid on delivery: changes adjust the amount to collect.', 'wpheka-edit-orders-for-woocommerce' )
 				/* translators: %s: payment method. */
-				: sprintf( __( 'Paid by %s. Decreases are refunded; increases are paid through a pay link for the difference.', 'edit-orders-for-woocommerce' ), $order->get_payment_method_title() )
+				: sprintf( __( 'Paid by %s. Decreases are refunded; increases are paid through a pay link for the difference.', 'wpheka-edit-orders-for-woocommerce' ), $order->get_payment_method_title() )
 		);
 		echo '</p>';
 
 		echo '<form id="edit-orders-form" data-order="' . esc_attr( $order->get_id() ) . '">';
-		echo '<h2 class="nav-tab-wrapper"><a href="#items" class="nav-tab nav-tab-active" data-mode="items">' . esc_html__( 'Items', 'edit-orders-for-woocommerce' ) . '</a><a href="#address" class="nav-tab" data-mode="address">' . esc_html__( 'Address', 'edit-orders-for-woocommerce' ) . '</a></h2>';
+		echo '<h2 class="nav-tab-wrapper"><a href="#items" class="nav-tab nav-tab-active" data-mode="items">' . esc_html__( 'Items', 'wpheka-edit-orders-for-woocommerce' ) . '</a><a href="#address" class="nav-tab" data-mode="address">' . esc_html__( 'Address', 'wpheka-edit-orders-for-woocommerce' ) . '</a></h2>';
 		echo '<input type="hidden" name="mode" value="items" />';
 
 		self::render_items_tab( $order );
 		self::render_address_tab( $order );
 
-		echo '<p class="edit-orders-actions"><button type="button" class="button button-primary" id="edit-orders-preview">' . esc_html__( 'Preview changes', 'edit-orders-for-woocommerce' ) . '</button> ';
-		echo '<button type="button" class="button" id="edit-orders-discard" data-back="' . esc_url( $order->get_edit_order_url() ) . '">' . esc_html__( 'Discard', 'edit-orders-for-woocommerce' ) . '</button></p>';
+		echo '<p class="edit-orders-actions"><button type="button" class="button button-primary" id="edit-orders-preview">' . esc_html__( 'Preview changes', 'wpheka-edit-orders-for-woocommerce' ) . '</button> ';
+		echo '<button type="button" class="button" id="edit-orders-discard" data-back="' . esc_url( $order->get_edit_order_url() ) . '">' . esc_html__( 'Discard', 'wpheka-edit-orders-for-woocommerce' ) . '</button></p>';
 		echo '</form>';
 		echo '<div id="edit-orders-preview-panel" aria-live="polite"></div>';
 		echo '</div>';
@@ -289,7 +289,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 	 */
 	private static function render_items_tab( WC_Order $order ) {
 		echo '<div class="edit-orders-tab" data-tab="items">';
-		echo '<table class="widefat striped edit-orders-items"><thead><tr><th>' . esc_html__( 'Item', 'edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'Paid each', 'edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'Option', 'edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'Quantity', 'edit-orders-for-woocommerce' ) . '</th></tr></thead><tbody>';
+		echo '<table class="widefat striped edit-orders-items"><thead><tr><th>' . esc_html__( 'Item', 'wpheka-edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'Paid each', 'wpheka-edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'Option', 'wpheka-edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'Quantity', 'wpheka-edit-orders-for-woocommerce' ) . '</th></tr></thead><tbody>';
 
 		foreach ( $order->get_items() as $item_id => $item ) {
 			$check    = Edit_Orders_For_WooCommerce_Eligibility::check_item( $order, $item );
@@ -313,7 +313,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 					if ( ! $variation || ! $variation->exists() ) {
 						continue;
 					}
-					$label = wc_get_formatted_variation( $variation, true, false, false ) . ' (' . wp_strip_all_tags( wc_price( Edit_Orders_For_WooCommerce_Pricing::current_price( $variation ), array( 'currency' => $order->get_currency() ) ) ) . ( $variation->is_in_stock() ? '' : ', ' . __( 'out of stock', 'edit-orders-for-woocommerce' ) ) . ')';
+					$label = wc_get_formatted_variation( $variation, true, false, false ) . ' (' . wp_strip_all_tags( wc_price( Edit_Orders_For_WooCommerce_Pricing::current_price( $variation ), array( 'currency' => $order->get_currency() ) ) ) . ( $variation->is_in_stock() ? '' : ', ' . __( 'out of stock', 'wpheka-edit-orders-for-woocommerce' ) ) . ')';
 					echo '<option value="' . esc_attr( $variation_id ) . '"' . selected( (int) $item->get_variation_id(), (int) $variation_id, false ) . disabled( ! $variation->is_in_stock() && (int) $variation_id !== (int) $item->get_variation_id(), true, false ) . '>' . esc_html( html_entity_decode( $label ) ) . '</option>';
 				}
 				echo '</select>';
@@ -325,13 +325,13 @@ class Edit_Orders_For_WooCommerce_Admin {
 		}
 
 		echo '</tbody></table>';
-		echo '<p class="description">' . esc_html__( 'Set a quantity to 0 to remove the item.', 'edit-orders-for-woocommerce' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Set a quantity to 0 to remove the item.', 'wpheka-edit-orders-for-woocommerce' ) . '</p>';
 
-		echo '<h3>' . esc_html__( 'Add products', 'edit-orders-for-woocommerce' ) . '</h3>';
-		echo '<div class="edit-orders-add"><select class="wc-product-search edit-orders-add-product" style="width: 320px;" data-placeholder="' . esc_attr__( 'Search for a product', 'edit-orders-for-woocommerce' ) . '" data-action="woocommerce_json_search_products_and_variations" data-exclude_type="variable"></select> ';
-		echo '<input type="number" min="1" step="1" value="1" class="small-text edit-orders-add-qty" aria-label="' . esc_attr__( 'Quantity', 'edit-orders-for-woocommerce' ) . '" /> ';
-		echo '<input type="text" class="short edit-orders-add-price" placeholder="' . esc_attr__( 'Catalogue price', 'edit-orders-for-woocommerce' ) . '" aria-label="' . esc_attr__( 'Price each, excluding tax (optional)', 'edit-orders-for-woocommerce' ) . '" /> ';
-		echo '<button type="button" class="button edit-orders-add-button">' . esc_html__( 'Add', 'edit-orders-for-woocommerce' ) . '</button></div>';
+		echo '<h3>' . esc_html__( 'Add products', 'wpheka-edit-orders-for-woocommerce' ) . '</h3>';
+		echo '<div class="edit-orders-add"><select class="wc-product-search edit-orders-add-product" style="width: 320px;" data-placeholder="' . esc_attr__( 'Search for a product', 'wpheka-edit-orders-for-woocommerce' ) . '" data-action="woocommerce_json_search_products_and_variations" data-exclude_type="variable"></select> ';
+		echo '<input type="number" min="1" step="1" value="1" class="small-text edit-orders-add-qty" aria-label="' . esc_attr__( 'Quantity', 'wpheka-edit-orders-for-woocommerce' ) . '" /> ';
+		echo '<input type="text" class="short edit-orders-add-price" placeholder="' . esc_attr__( 'Catalogue price', 'wpheka-edit-orders-for-woocommerce' ) . '" aria-label="' . esc_attr__( 'Price each, excluding tax (optional)', 'wpheka-edit-orders-for-woocommerce' ) . '" /> ';
+		echo '<button type="button" class="button edit-orders-add-button">' . esc_html__( 'Add', 'wpheka-edit-orders-for-woocommerce' ) . '</button></div>';
 		echo '<ul class="edit-orders-added"></ul>';
 		echo '</div>';
 	}
@@ -343,27 +343,27 @@ class Edit_Orders_For_WooCommerce_Admin {
 	 */
 	private static function render_address_tab( WC_Order $order ) {
 		echo '<div class="edit-orders-tab" data-tab="address" hidden>';
-		echo '<p class="description">' . esc_html__( 'An address change is applied on its own: shipping is re-rated and tax recalculated for the new address.', 'edit-orders-for-woocommerce' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'An address change is applied on its own: shipping is re-rated and tax recalculated for the new address.', 'wpheka-edit-orders-for-woocommerce' ) . '</p>';
 		echo '<div class="edit-orders-addresses">';
 
 		$labels = array(
-			'first_name' => __( 'First name', 'edit-orders-for-woocommerce' ),
-			'last_name'  => __( 'Last name', 'edit-orders-for-woocommerce' ),
-			'company'    => __( 'Company', 'edit-orders-for-woocommerce' ),
-			'address_1'  => __( 'Address line 1', 'edit-orders-for-woocommerce' ),
-			'address_2'  => __( 'Address line 2', 'edit-orders-for-woocommerce' ),
-			'city'       => __( 'City', 'edit-orders-for-woocommerce' ),
-			'postcode'   => __( 'Postcode / ZIP', 'edit-orders-for-woocommerce' ),
-			'country'    => __( 'Country', 'edit-orders-for-woocommerce' ),
-			'state'      => __( 'State / Province', 'edit-orders-for-woocommerce' ),
-			'phone'      => __( 'Phone', 'edit-orders-for-woocommerce' ),
+			'first_name' => __( 'First name', 'wpheka-edit-orders-for-woocommerce' ),
+			'last_name'  => __( 'Last name', 'wpheka-edit-orders-for-woocommerce' ),
+			'company'    => __( 'Company', 'wpheka-edit-orders-for-woocommerce' ),
+			'address_1'  => __( 'Address line 1', 'wpheka-edit-orders-for-woocommerce' ),
+			'address_2'  => __( 'Address line 2', 'wpheka-edit-orders-for-woocommerce' ),
+			'city'       => __( 'City', 'wpheka-edit-orders-for-woocommerce' ),
+			'postcode'   => __( 'Postcode / ZIP', 'wpheka-edit-orders-for-woocommerce' ),
+			'country'    => __( 'Country', 'wpheka-edit-orders-for-woocommerce' ),
+			'state'      => __( 'State / Province', 'wpheka-edit-orders-for-woocommerce' ),
+			'phone'      => __( 'Phone', 'wpheka-edit-orders-for-woocommerce' ),
 		);
 
 		foreach ( array( 'shipping', 'billing' ) as $type ) {
 			$address   = $order->get_address( $type );
 			$countries = 'shipping' === $type ? WC()->countries->get_shipping_countries() : WC()->countries->get_allowed_countries();
 
-			echo '<fieldset class="edit-orders-address" data-type="' . esc_attr( $type ) . '"><legend>' . esc_html( 'shipping' === $type ? __( 'Shipping address', 'edit-orders-for-woocommerce' ) : __( 'Billing address', 'edit-orders-for-woocommerce' ) ) . '</legend>';
+			echo '<fieldset class="edit-orders-address" data-type="' . esc_attr( $type ) . '"><legend>' . esc_html( 'shipping' === $type ? __( 'Shipping address', 'wpheka-edit-orders-for-woocommerce' ) : __( 'Billing address', 'wpheka-edit-orders-for-woocommerce' ) ) . '</legend>';
 			foreach ( $labels as $field => $label ) {
 				$name  = $type . '[' . $field . ']';
 				$value = isset( $address[ $field ] ) ? $address[ $field ] : '';
@@ -516,7 +516,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 
 		ob_start();
 		echo '<div class="edit-orders-preview">';
-		echo '<h2>' . esc_html__( 'Preview', 'edit-orders-for-woocommerce' ) . '</h2>';
+		echo '<h2>' . esc_html__( 'Preview', 'wpheka-edit-orders-for-woocommerce' ) . '</h2>';
 
 		echo '<ul class="edit-orders-changes">';
 		foreach ( $plan->get_descriptions() as $description ) {
@@ -526,10 +526,10 @@ class Edit_Orders_For_WooCommerce_Admin {
 
 		$rows = $plan->get_preview_rows( $order );
 		if ( $rows ) {
-			echo '<table class="widefat striped edit-orders-diff"><thead><tr><th>' . esc_html__( 'Item', 'edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'Before', 'edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'After', 'edit-orders-for-woocommerce' ) . '</th></tr></thead><tbody>';
+			echo '<table class="widefat striped edit-orders-diff"><thead><tr><th>' . esc_html__( 'Item', 'wpheka-edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'Before', 'wpheka-edit-orders-for-woocommerce' ) . '</th><th>' . esc_html__( 'After', 'wpheka-edit-orders-for-woocommerce' ) . '</th></tr></thead><tbody>';
 			foreach ( $rows as $row ) {
 				echo '<tr class="is-' . esc_attr( $row['state'] ) . '"><td>' . esc_html( $row['after_name'] !== $row['name'] ? $row['name'] . ' > ' . $row['after_name'] : $row['name'] ) . '</td>';
-				echo '<td>' . esc_html( $row['before'] ? $row['before'] : '-' ) . '</td><td>' . esc_html( $row['after'] ? $row['after'] : __( 'removed', 'edit-orders-for-woocommerce' ) ) . '</td></tr>';
+				echo '<td>' . esc_html( $row['before'] ? $row['before'] : '-' ) . '</td><td>' . esc_html( $row['after'] ? $row['after'] : __( 'removed', 'wpheka-edit-orders-for-woocommerce' ) ) . '</td></tr>';
 			}
 			echo '</tbody></table>';
 		}
@@ -539,16 +539,16 @@ class Edit_Orders_For_WooCommerce_Admin {
 			echo '<p class="edit-orders-refund" data-amount="' . esc_attr( wc_format_decimal( $refund, wc_get_price_decimals() ) ) . '">';
 			if ( $on_delivery ) {
 				/* translators: %s: amount. */
-				printf( esc_html__( 'Collect %s less on delivery.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $refund, $currency ) ) );
+				printf( esc_html__( 'Collect %s less on delivery.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $refund, $currency ) ) );
 			} elseif ( $gateway && $gateway->supports( 'refunds' ) ) {
 				/* translators: 1: amount, 2: payment method. */
-				printf( esc_html__( 'Refund %1$s through %2$s.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $refund, $currency ) ), esc_html( $order->get_payment_method_title() ) );
+				printf( esc_html__( 'Refund %1$s through %2$s.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $refund, $currency ) ), esc_html( $order->get_payment_method_title() ) );
 			} else {
 				/* translators: %s: amount. */
-				printf( esc_html__( 'Manual refund needed: %s. This payment method cannot refund automatically; you will be reminded by email.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $refund, $currency ) ) );
+				printf( esc_html__( 'Manual refund needed: %s. This payment method cannot refund automatically; you will be reminded by email.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $refund, $currency ) ) );
 			}
 			if ( $plan->needs_balance() && ! $on_delivery ) {
-				echo ' ' . esc_html__( 'The refund is made once the balance is paid.', 'edit-orders-for-woocommerce' );
+				echo ' ' . esc_html__( 'The refund is made once the balance is paid.', 'wpheka-edit-orders-for-woocommerce' );
 			}
 			echo '</p>';
 		}
@@ -557,22 +557,22 @@ class Edit_Orders_For_WooCommerce_Admin {
 			echo '<p class="edit-orders-balance" data-amount="' . esc_attr( wc_format_decimal( $balance, wc_get_price_decimals() ) ) . '">';
 			if ( $on_delivery ) {
 				/* translators: %s: amount. */
-				printf( esc_html__( 'Collect %s more on delivery, on a linked order.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $balance, $currency ) ) );
+				printf( esc_html__( 'Collect %s more on delivery, on a linked order.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $balance, $currency ) ) );
 			} else {
 				/* translators: %s: amount. */
-				printf( esc_html__( 'Customer pays %s through a pay link. The changes are made when it is paid; until then the order ships as it is.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $balance, $currency ) ) );
+				printf( esc_html__( 'Customer pays %s through a pay link. The changes are made when it is paid; until then the order ships as it is.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $balance, $currency ) ) );
 			}
 			echo '</p>';
 		}
 
 		if ( $refund <= 0 && ! $plan->needs_balance() ) {
-			echo '<p class="edit-orders-no-money">' . esc_html__( 'No money moves.', 'edit-orders-for-woocommerce' ) . '</p>';
+			echo '<p class="edit-orders-no-money">' . esc_html__( 'No money moves.', 'wpheka-edit-orders-for-woocommerce' ) . '</p>';
 		}
 		echo '</div>';
 
 		$stock = self::stock_lines( $order, $plan );
 		if ( $stock ) {
-			echo '<h3>' . esc_html__( 'Stock', 'edit-orders-for-woocommerce' ) . '</h3><ul class="edit-orders-stock">';
+			echo '<h3>' . esc_html__( 'Stock', 'wpheka-edit-orders-for-woocommerce' ) . '</h3><ul class="edit-orders-stock">';
 			foreach ( $stock as $line ) {
 				echo '<li>' . esc_html( $line ) . '</li>';
 			}
@@ -581,15 +581,15 @@ class Edit_Orders_For_WooCommerce_Admin {
 
 		echo '<p class="edit-orders-options">';
 		if ( $plan->needs_balance() && ! $on_delivery && self::balance_due_email() ) {
-			echo '<label><input type="checkbox" name="send_pay_link" value="1" checked /> ' . esc_html__( 'Email the customer the pay link', 'edit-orders-for-woocommerce' ) . '</label><br />';
+			echo '<label><input type="checkbox" name="send_pay_link" value="1" checked /> ' . esc_html__( 'Email the customer the pay link', 'wpheka-edit-orders-for-woocommerce' ) . '</label><br />';
 		} elseif ( $plan->needs_balance() && ! $on_delivery ) {
-			echo esc_html__( 'The "Balance due" email is turned off in WooCommerce > Settings > Emails. Send the customer the pay link from the order screen yourself.', 'edit-orders-for-woocommerce' ) . '<br />';
+			echo esc_html__( 'The "Balance due" email is turned off in WooCommerce > Settings > Emails. Send the customer the pay link from the order screen yourself.', 'wpheka-edit-orders-for-woocommerce' ) . '<br />';
 		} else {
-			echo '<label><input type="checkbox" name="notify_customer" value="1" checked /> ' . esc_html__( 'Email the customer that the order was updated', 'edit-orders-for-woocommerce' ) . '</label><br />';
+			echo '<label><input type="checkbox" name="notify_customer" value="1" checked /> ' . esc_html__( 'Email the customer that the order was updated', 'wpheka-edit-orders-for-woocommerce' ) . '</label><br />';
 		}
 		echo '</p>';
 		echo '<input type="hidden" name="expect" value="' . esc_attr( $plan->fingerprint() ) . '" />';
-		echo '<p><button type="button" class="button button-primary" id="edit-orders-apply">' . esc_html__( 'Apply changes', 'edit-orders-for-woocommerce' ) . '</button></p>';
+		echo '<p><button type="button" class="button button-primary" id="edit-orders-apply">' . esc_html__( 'Apply changes', 'wpheka-edit-orders-for-woocommerce' ) . '</button></p>';
 		echo '</div>';
 
 		return ob_get_clean();
@@ -609,7 +609,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 			$item = $order->get_item( $item_id );
 			if ( $line['qty'] > 0 && $item instanceof WC_Order_Item_Product && $item->get_meta( '_reduced_stock', true ) ) {
 				/* translators: 1: quantity, 2: product name. */
-				$lines[] = sprintf( __( '%1$d x %2$s back to stock.', 'edit-orders-for-woocommerce' ), $line['qty'], $item->get_name() );
+				$lines[] = sprintf( __( '%1$d x %2$s back to stock.', 'wpheka-edit-orders-for-woocommerce' ), $line['qty'], $item->get_name() );
 			}
 		}
 
@@ -623,11 +623,11 @@ class Edit_Orders_For_WooCommerce_Admin {
 			$old = $item->get_product();
 			if ( (int) $item->get_meta( '_reduced_stock', true ) > 0 && $old && $old->managing_stock() ) {
 				/* translators: 1: quantity, 2: product name. */
-				$lines[] = sprintf( __( '%1$d x %2$s back to stock.', 'edit-orders-for-woocommerce' ), (int) $item->get_meta( '_reduced_stock', true ), $item->get_name() );
+				$lines[] = sprintf( __( '%1$d x %2$s back to stock.', 'wpheka-edit-orders-for-woocommerce' ), (int) $item->get_meta( '_reduced_stock', true ), $item->get_name() );
 			}
 			if ( $variation->managing_stock() ) {
 				/* translators: 1: quantity, 2: product name. */
-				$lines[] = sprintf( __( '%1$d x %2$s taken.', 'edit-orders-for-woocommerce' ), (int) $item->get_quantity(), $variation->get_name() );
+				$lines[] = sprintf( __( '%1$d x %2$s taken.', 'wpheka-edit-orders-for-woocommerce' ), (int) $item->get_quantity(), $variation->get_name() );
 			}
 		}
 
@@ -635,7 +635,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 			if ( 'product' === $line['type'] ) {
 				$product = wc_get_product( $line['product_id'] );
 				/* translators: 1: quantity, 2: product name. */
-				$lines[] = sprintf( __( '%1$d x %2$s taken when the balance is paid.', 'edit-orders-for-woocommerce' ), $line['quantity'], $product ? $product->get_name() : '' );
+				$lines[] = sprintf( __( '%1$d x %2$s taken when the balance is paid.', 'wpheka-edit-orders-for-woocommerce' ), $line['quantity'], $product ? $product->get_name() : '' );
 			}
 		}
 
@@ -651,27 +651,27 @@ class Edit_Orders_For_WooCommerce_Admin {
 		check_ajax_referer( self::NONCE, 'nonce' );
 
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_send_json_error( array( 'message' => __( 'You are not allowed to edit orders.', 'edit-orders-for-woocommerce' ) ), 403 );
+			wp_send_json_error( array( 'message' => __( 'You are not allowed to edit orders.', 'wpheka-edit-orders-for-woocommerce' ) ), 403 );
 		}
 
 		$order = isset( $_POST['order_id'] ) ? wc_get_order( absint( wp_unslash( $_POST['order_id'] ) ) ) : null;
 		if ( ! $order ) {
-			wp_send_json_error( array( 'message' => __( 'Order not found.', 'edit-orders-for-woocommerce' ) ), 404 );
+			wp_send_json_error( array( 'message' => __( 'Order not found.', 'wpheka-edit-orders-for-woocommerce' ) ), 404 );
 		}
 
 		return $order;
 	}
 
 	/**
-	 * The posted form, unslashed. Each field is sanitised where it is used.
+	 * The posted form, unslashed and sanitised.
 	 *
 	 * @return array
 	 */
 	private static function posted_form() {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce checked in ajax_order(); fields sanitised in changes_from_request().
-		$form = isset( $_POST['form'] ) ? wp_unslash( $_POST['form'] ) : array();
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce checked in ajax_order() before any caller reads the form.
+		$form = isset( $_POST['form'] ) && is_array( $_POST['form'] ) ? map_deep( wp_unslash( $_POST['form'] ), 'sanitize_text_field' ) : array();
 
-		return is_array( $form ) ? $form : array();
+		return $form;
 	}
 
 	/**
@@ -747,12 +747,12 @@ class Edit_Orders_For_WooCommerce_Admin {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce checked in ajax_order().
 		$balance = isset( $_POST['balance_id'] ) ? wc_get_order( absint( wp_unslash( $_POST['balance_id'] ) ) ) : null;
 		if ( ! $balance || ! Edit_Orders_For_WooCommerce_Balance_Orders::is_balance_order( $balance ) || (int) $balance->get_parent_id() !== $order->get_id() ) {
-			wp_send_json_error( array( 'message' => __( 'Balance order not found.', 'edit-orders-for-woocommerce' ) ), 404 );
+			wp_send_json_error( array( 'message' => __( 'Balance order not found.', 'wpheka-edit-orders-for-woocommerce' ) ), 404 );
 		}
 
 		// Only an unpaid balance order can be resent or cancelled; a paid one is refunded from its own screen.
 		if ( 'pending' !== $balance->get_status() ) {
-			wp_send_json_error( array( 'message' => __( 'This balance order is no longer waiting for payment. Reload the page.', 'edit-orders-for-woocommerce' ) ), 409 );
+			wp_send_json_error( array( 'message' => __( 'This balance order is no longer waiting for payment. Reload the page.', 'wpheka-edit-orders-for-woocommerce' ) ), 409 );
 		}
 
 		return $balance;
@@ -780,12 +780,12 @@ class Edit_Orders_For_WooCommerce_Admin {
 		$email   = self::balance_due_email();
 
 		if ( ! $email ) {
-			wp_send_json_error( array( 'message' => __( 'The "Balance due" email is turned off in WooCommerce > Settings > Emails, so nothing was sent. Copy the pay link instead.', 'edit-orders-for-woocommerce' ) ) );
+			wp_send_json_error( array( 'message' => __( 'The "Balance due" email is turned off in WooCommerce > Settings > Emails, so nothing was sent. Copy the pay link instead.', 'wpheka-edit-orders-for-woocommerce' ) ) );
 		}
 
 		$email->trigger( $balance->get_id(), $balance, is_array( $plan ) && isset( $plan['descriptions'] ) ? $plan['descriptions'] : array() );
 		/* translators: %s: balance order number. */
-		$order->add_order_note( sprintf( __( 'Pay link for balance order #%s sent again.', 'edit-orders-for-woocommerce' ), $balance->get_order_number() ) );
+		$order->add_order_note( sprintf( __( 'Pay link for balance order #%s sent again.', 'wpheka-edit-orders-for-woocommerce' ), $balance->get_order_number() ) );
 
 		wp_send_json_success();
 	}
@@ -796,7 +796,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 	public static function ajax_cancel_balance() {
 		$order   = self::ajax_order();
 		$balance = self::ajax_balance( $order );
-		$balance->update_status( 'cancelled', __( 'Cancelled by the store; the changes waiting for it were not made.', 'edit-orders-for-woocommerce' ) );
+		$balance->update_status( 'cancelled', __( 'Cancelled by the store; the changes waiting for it were not made.', 'wpheka-edit-orders-for-woocommerce' ) );
 
 		wp_send_json_success();
 	}

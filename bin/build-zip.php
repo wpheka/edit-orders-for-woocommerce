@@ -2,7 +2,7 @@
 /**
  * Build the release zip: php bin/build-zip.php
  *
- * Copies the plugin into build/edit-orders-for-woocommerce-<version>.zip, leaving out
+ * Copies the plugin into build/wpheka-edit-orders-for-woocommerce-<version>.zip, leaving out
  * everything listed in .distignore (tests, dev tooling). Plain PHP with ZipArchive, so it
  * runs the same on macOS, Windows and in the wp-env container. Not shipped.
  *
@@ -15,14 +15,21 @@ if ( 'cli' !== PHP_SAPI ) {
 	exit( 1 );
 }
 
-$root = dirname( __DIR__ );
-$slug = 'edit-orders-for-woocommerce';
+$root   = dirname( __DIR__ );
+$header = file_get_contents( $root . '/edit-orders-for-woocommerce.php' );
 
-if ( ! preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', file_get_contents( $root . '/' . $slug . '.php' ), $match ) ) {
+if ( ! preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $header, $match ) ) {
 	fwrite( STDERR, "Version header not found.\n" );
 	exit( 1 );
 }
 $version = $match[1];
+
+// The wordpress.org slug, which names the zip and its folder, is the text domain.
+if ( ! preg_match( '/^\s*\*\s*Text Domain:\s*(\S+)/m', $header, $match ) ) {
+	fwrite( STDERR, "Text Domain header not found.\n" );
+	exit( 1 );
+}
+$slug = $match[1];
 
 $ignore = array_filter( array_map( 'trim', file( $root . '/.distignore' ) ) );
 

@@ -127,7 +127,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 
 		// Refunds are capped by WooCommerce; never plan one it would refuse.
 		if ( empty( $plan->errors ) && $plan->get_refund_amount() > (float) $order->get_remaining_refund_amount() ) {
-			$plan->errors[] = __( 'The refund would be more than what is left to refund on this order.', 'edit-orders-for-woocommerce' );
+			$plan->errors[] = __( 'The refund would be more than what is left to refund on this order.', 'wpheka-edit-orders-for-woocommerce' );
 		}
 
 		/**
@@ -159,9 +159,9 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			$this->refund_lines[ $item->get_id() ] = Edit_Orders_For_WooCommerce_Pricing::refund_for_quantity( $item, $current - $quantity );
 			$this->descriptions[]                  = 0 === $quantity
 				/* translators: %s: product name. */
-				? sprintf( __( 'Removed "%s".', 'edit-orders-for-woocommerce' ), $item->get_name() )
+				? sprintf( __( 'Removed "%s".', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name() )
 				/* translators: 1: product name, 2: old quantity, 3: new quantity. */
-				: sprintf( __( '"%1$s" quantity %2$d to %3$d.', 'edit-orders-for-woocommerce' ), $item->get_name(), $current, $quantity );
+				: sprintf( __( '"%1$s" quantity %2$d to %3$d.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $current, $quantity );
 			return;
 		}
 
@@ -171,7 +171,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 
 		if ( ! $product->is_in_stock() || ( $product->managing_stock() && ! $product->has_enough_stock( $extra ) ) ) {
 			/* translators: %s: product name. */
-			$this->errors[] = sprintf( __( 'There is not enough stock of "%s".', 'edit-orders-for-woocommerce' ), $item->get_name() );
+			$this->errors[] = sprintf( __( 'There is not enough stock of "%s".', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name() );
 			return;
 		}
 
@@ -183,7 +183,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			'total'      => Edit_Orders_For_WooCommerce_Pricing::round( (float) $item->get_total() / $current * $extra ),
 		);
 		/* translators: 1: product name, 2: old quantity, 3: new quantity. */
-		$this->descriptions[] = sprintf( __( '"%1$s" quantity %2$d to %3$d.', 'edit-orders-for-woocommerce' ), $item->get_name(), $current, $quantity );
+		$this->descriptions[] = sprintf( __( '"%1$s" quantity %2$d to %3$d.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $current, $quantity );
 	}
 
 	/**
@@ -197,7 +197,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 
 		if ( ! $new || ! $new->is_type( 'variation' ) || (int) $new->get_parent_id() !== (int) $item->get_product_id() ) {
 			/* translators: %s: product name. */
-			$this->errors[] = sprintf( __( 'That option is not a variation of "%s".', 'edit-orders-for-woocommerce' ), $item->get_name() );
+			$this->errors[] = sprintf( __( 'That option is not a variation of "%s".', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name() );
 			return;
 		}
 
@@ -208,14 +208,14 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		// Disabled (private) or unpriced variations can't be bought, so they can't be swapped to.
 		if ( 'publish' !== $new->get_status() || ! $new->is_purchasable() ) {
 			/* translators: %s: product name. */
-			$this->errors[] = sprintf( __( '"%s" is not available.', 'edit-orders-for-woocommerce' ), $new->get_name() );
+			$this->errors[] = sprintf( __( '"%s" is not available.', 'wpheka-edit-orders-for-woocommerce' ), $new->get_name() );
 			return;
 		}
 
 		$quantity = (int) $item->get_quantity();
 		if ( ! $new->is_in_stock() || ( $new->managing_stock() && ! $new->has_enough_stock( $quantity ) ) ) {
 			/* translators: %s: product name. */
-			$this->errors[] = sprintf( __( '"%s" is out of stock.', 'edit-orders-for-woocommerce' ), $new->get_name() );
+			$this->errors[] = sprintf( __( '"%s" is out of stock.', 'wpheka-edit-orders-for-woocommerce' ), $new->get_name() );
 			return;
 		}
 
@@ -227,7 +227,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			$this->balance_items[] = array(
 				'type'      => 'fee',
 				/* translators: 1: old product name, 2: new product name. */
-				'name'      => sprintf( __( 'Price difference: %1$s to %2$s', 'edit-orders-for-woocommerce' ), $item->get_name(), $new->get_name() ),
+				'name'      => sprintf( __( 'Price difference: %1$s to %2$s', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $new->get_name() ),
 				'tax_class' => $new->get_tax_class(),
 				'taxable'   => $new->is_taxable(),
 				'total'     => $difference,
@@ -241,7 +241,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			'variation_id' => $new->get_id(),
 		);
 		/* translators: 1: old product name, 2: new product name. */
-		$this->descriptions[] = sprintf( __( 'Swapped "%1$s" for "%2$s".', 'edit-orders-for-woocommerce' ), $item->get_name(), $new->get_name() );
+		$this->descriptions[] = sprintf( __( 'Swapped "%1$s" for "%2$s".', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $new->get_name() );
 	}
 
 	/**
@@ -253,13 +253,13 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		$product = wc_get_product( $change['product_id'] );
 
 		if ( ! $product || $product->is_type( 'variable' ) || $product->is_type( 'grouped' ) || ! $product->exists() ) {
-			$this->errors[] = __( 'Choose a single product or a specific variation to add.', 'edit-orders-for-woocommerce' );
+			$this->errors[] = __( 'Choose a single product or a specific variation to add.', 'wpheka-edit-orders-for-woocommerce' );
 			return;
 		}
 
 		if ( ! $product->is_in_stock() || ( $product->managing_stock() && ! $product->has_enough_stock( $change['quantity'] ) ) ) {
 			/* translators: %s: product name. */
-			$this->errors[] = sprintf( __( '"%s" is out of stock.', 'edit-orders-for-woocommerce' ), $product->get_name() );
+			$this->errors[] = sprintf( __( '"%s" is out of stock.', 'wpheka-edit-orders-for-woocommerce' ), $product->get_name() );
 			return;
 		}
 
@@ -274,7 +274,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			'total'      => $total,
 		);
 		/* translators: 1: quantity, 2: product name. */
-		$this->descriptions[] = sprintf( __( 'Added %1$d x "%2$s".', 'edit-orders-for-woocommerce' ), $change['quantity'], $product->get_name() );
+		$this->descriptions[] = sprintf( __( 'Added %1$d x "%2$s".', 'wpheka-edit-orders-for-woocommerce' ), $change['quantity'], $product->get_name() );
 	}
 
 	/**
@@ -437,16 +437,16 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			return new WP_Error(
 				'edit_orders_for_woocommerce_original_closed',
 				/* translators: %s: order status. */
-				sprintf( __( 'the original order is now %s', 'edit-orders-for-woocommerce' ), wc_get_order_status_name( $order->get_status() ) )
+				sprintf( __( 'the original order is now %s', 'wpheka-edit-orders-for-woocommerce' ), wc_get_order_status_name( $order->get_status() ) )
 			);
 		}
 
 		if ( null !== $this->refunded_at_build && abs( (float) $order->get_total_refunded() - $this->refunded_at_build ) > 0.001 ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_refunded_since', __( 'the original order was refunded after the change was made', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_refunded_since', __( 'the original order was refunded after the change was made', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		if ( $this->get_refund_amount() > (float) $order->get_remaining_refund_amount() + 0.001 ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_refund_too_big', __( 'the refund is more than what is left to refund on the original order', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_refund_too_big', __( 'the refund is more than what is left to refund on the original order', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		return true;

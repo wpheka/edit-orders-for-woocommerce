@@ -133,7 +133,7 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 		}
 
 		/**
-		 * Customer actions offered. Pro adds more.
+		 * Customer actions offered. Add or remove action keys to change what the panel shows.
 		 *
 		 * @since 1.0.0
 		 *
@@ -152,27 +152,27 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 	 */
 	public static function can( WC_Order $order, $action, $actor = 'customer' ) {
 		if ( ! Edit_Orders_For_WooCommerce_Settings::is_on( 'customer_enabled' ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_customer_off', __( 'Changes to orders are not available.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_customer_off', __( 'Changes to orders are not available.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		if ( 'close' !== $action && ! in_array( $action, self::enabled_actions(), true ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_action_off', __( 'That change is not available.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_action_off', __( 'That change is not available.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		if ( ! in_array( $order->get_status(), Edit_Orders_For_WooCommerce_Eligibility::editable_statuses(), true ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_status', __( 'This order can no longer be changed.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_status', __( 'This order can no longer be changed.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		if ( self::is_shipped( $order ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_shipped', __( 'This order has already shipped, so it can no longer be changed.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_shipped', __( 'This order has already shipped, so it can no longer be changed.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		if ( 0 === self::seconds_left( $order ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_window', __( 'The time for changing this order has passed. Contact us if you need help.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_window', __( 'The time for changing this order has passed. Contact us if you need help.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		if ( 'cancel' === $action && 'pending' === $order->get_meta( Edit_Orders_For_WooCommerce_Cancellation::STATUS_META ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_cancel_pending', __( 'Your cancellation request is waiting for the store.', 'edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_cancel_pending', __( 'Your cancellation request is waiting for the store.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		// Cancelling is allowed with an open balance order (it is cancelled too); edits aren't.
@@ -214,7 +214,7 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 	 * @return string|WP_Error `customer` or `guest`; a 404-style error otherwise.
 	 */
 	public static function authorize( $order, $key, $email = '' ) {
-		$not_found = new WP_Error( 'edit_orders_for_woocommerce_not_found', __( 'Order not found.', 'edit-orders-for-woocommerce' ), array( 'status' => 404 ) );
+		$not_found = new WP_Error( 'edit_orders_for_woocommerce_not_found', __( 'Order not found.', 'wpheka-edit-orders-for-woocommerce' ), array( 'status' => 404 ) );
 
 		if ( ! $order instanceof WC_Order || Edit_Orders_For_WooCommerce_Balance_Orders::is_balance_order( $order ) ) {
 			return $not_found;
@@ -230,7 +230,7 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 		if ( ! $customer_id && '' !== $key && hash_equals( $order->get_order_key(), $key ) ) {
 			if ( self::guest_must_confirm_email( $order, $email ) ) {
 				// The right key: not a guessing attempt, so don't count it.
-				return new WP_Error( 'edit_orders_for_woocommerce_confirm_email', __( 'To keep your order safe, please open your order again and confirm your email address.', 'edit-orders-for-woocommerce' ), array( 'status' => 403 ) );
+				return new WP_Error( 'edit_orders_for_woocommerce_confirm_email', __( 'To keep your order safe, please open your order again and confirm your email address.', 'wpheka-edit-orders-for-woocommerce' ), array( 'status' => 403 ) );
 			}
 			self::$confirmed_guest_orders[ $order->get_id() ] = true;
 			return 'guest';
@@ -238,7 +238,7 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 
 		if ( $customer_id && '' !== $key && hash_equals( $order->get_order_key(), $key ) ) {
 			// The right key for an account order: not a guessing attempt, so don't count it.
-			return new WP_Error( 'edit_orders_for_woocommerce_login', __( 'Please log in to your account to change this order.', 'edit-orders-for-woocommerce' ), array( 'status' => 403 ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_login', __( 'Please log in to your account to change this order.', 'wpheka-edit-orders-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		self::count_failed_key();

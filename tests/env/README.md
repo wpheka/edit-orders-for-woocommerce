@@ -54,10 +54,10 @@ Run from this plugin's folder:
 
 | Command | What it does |
 |---|---|
-| `php bin/build-zip.php` | Builds `build/edit-orders-for-woocommerce-<version>.zip`, leaving out everything in `.distignore` |
+| `php bin/build-zip.php` | Builds `build/wpheka-edit-orders-for-woocommerce-<version>.zip`, leaving out everything in `.distignore` |
 | `npm run wp -- plugin check /tmp/eofw/edit-orders-for-woocommerce` | Plugin Check on the built copy. Extract the zip to `/tmp/eofw` in the cli container first; checking this folder flags the dev-only hidden files |
 | `NODE_PATH=/path/to/node_modules node tests/e2e/screenshots.cjs` | Recreates the six wordpress.org screenshots in `.wordpress-org/` (store must be running; the orders it makes are deleted). Look at every image before uploading |
-| `npx -y @wordpress/env@11 run cli wp i18n make-pot wp-content/plugins/edit-orders-for-woocommerce wp-content/plugins/edit-orders-for-woocommerce/languages/edit-orders-for-woocommerce.pot --exclude=tests,bin,build` | Regenerates the translation template |
+| `npx -y @wordpress/env@11 run cli wp i18n make-pot wp-content/plugins/edit-orders-for-woocommerce wp-content/plugins/edit-orders-for-woocommerce/languages/wpheka-edit-orders-for-woocommerce.pot --exclude=tests,bin,build` | Regenerates the translation template |
 
 ## Other PHP versions and the minimum WordPress and WooCommerce
 

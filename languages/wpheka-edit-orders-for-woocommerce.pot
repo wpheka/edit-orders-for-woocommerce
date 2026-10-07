@@ -1,22 +1,22 @@
-# Copyright (C) 2026 Akshaya Swaroop
+# Copyright (C) 2026 WPHEKA
 # This file is distributed under the GPLv3 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Edit Orders for WooCommerce 1.0.0\n"
+"Project-Id-Version: WPHEKA Edit Orders for WooCommerce 1.0.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/edit-orders-for-woocommerce\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-07T17:36:37+00:00\n"
+"POT-Creation-Date: 2026-10-07T18:12:37+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
-"X-Domain: edit-orders-for-woocommerce\n"
+"X-Domain: wpheka-edit-orders-for-woocommerce\n"
 
 #. Plugin Name of the plugin
 #: edit-orders-for-woocommerce.php
-msgid "Edit Orders for WooCommerce"
+msgid "WPHEKA Edit Orders for WooCommerce"
 msgstr ""
 
 #. Plugin URI of the plugin
@@ -31,12 +31,12 @@ msgstr ""
 
 #. Author of the plugin
 #: edit-orders-for-woocommerce.php
-msgid "Akshaya Swaroop"
+msgid "WPHEKA"
 msgstr ""
 
 #. Author URI of the plugin
 #: edit-orders-for-woocommerce.php
-msgid "https://github.com/SwaroopAkshaya"
+msgid "https://www.wpheka.com/"
 msgstr ""
 
 #: includes/admin/class-edit-orders-for-woocommerce-activity.php:38
@@ -1266,84 +1266,84 @@ msgstr ""
 msgid "Stock moved: %s."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:67
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:79
 msgid "The time for changes has passed."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:84
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:96
 msgid "This page has expired. Reload it and try again."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:93
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:105
 msgid "Too many attempts. Please try again later."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:104
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:116
 msgid "Open your order"
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:141
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:153
 msgid "Too many changes in a short time. Please try again later."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:152
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:164
 msgid "The customer confirmed the order as it is; changes are closed."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:169
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:181
 msgid "Thank you. Your order is confirmed as it is."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:185
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:197
 msgid "Your cancellation request has been sent. We will email you when the store has answered."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:186
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:198
 msgid "Your order is cancelled. We have emailed you the details."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:195
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:207
 msgid "Unknown request."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:210
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:306
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:222
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:318
 msgid "Nothing was changed."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:283
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:295
 msgid "Pay the difference to complete your change."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:288
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:300
 msgid "Your order has been updated. We have emailed you the details."
 msgstr ""
 
 #. translators: 1: old note, 2: new note.
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:311
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:323
 #, php-format
 msgid "The customer changed the order note from \"%1$s\" to \"%2$s\"."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:329
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:341
 msgid "Order note changed."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:334
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:346
 msgid "Your order note has been updated."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:535
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:547
 msgid "Change or cancel"
 msgstr ""
 
 #. translators: %s: date and time the window closes.
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:571
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:583
 #, php-format
 msgid "Need to change or cancel this order? You can do it until %s."
 msgstr ""
 
-#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:580
+#: includes/frontend/class-edit-orders-for-woocommerce-frontend.php:592
 msgid "Change or cancel your order"
 msgstr ""
 

@@ -39,14 +39,14 @@ class Edit_Orders_For_WooCommerce_Stock {
 			if ( $reduced > 0 && $old_product && $old_product->managing_stock() ) {
 				wc_update_product_stock( $old_product, $reduced, 'increase' );
 				/* translators: 1: quantity, 2: product name. */
-				$moves[] = sprintf( __( '%1$d of %2$s back to stock', 'edit-orders-for-woocommerce' ), $reduced, $old_product->get_name() );
+				$moves[] = sprintf( __( '%1$d of %2$s back to stock', 'wpheka-edit-orders-for-woocommerce' ), $reduced, $old_product->get_name() );
 			}
 
 			if ( $new_variation->managing_stock() && $quantity > 0 ) {
 				wc_update_product_stock( $new_variation, $quantity, 'decrease' );
 				$item->update_meta_data( '_reduced_stock', $quantity );
 				/* translators: 1: quantity, 2: product name. */
-				$moves[] = sprintf( __( '%1$d of %2$s taken', 'edit-orders-for-woocommerce' ), $quantity, $new_variation->get_name() );
+				$moves[] = sprintf( __( '%1$d of %2$s taken', 'wpheka-edit-orders-for-woocommerce' ), $quantity, $new_variation->get_name() );
 			} else {
 				$item->delete_meta_data( '_reduced_stock' );
 			}
@@ -56,6 +56,6 @@ class Edit_Orders_For_WooCommerce_Stock {
 		$item->save();
 
 		/* translators: %s: list of stock moves. */
-		return $moves ? sprintf( __( 'Stock moved: %s.', 'edit-orders-for-woocommerce' ), implode( ', ', $moves ) ) : '';
+		return $moves ? sprintf( __( 'Stock moved: %s.', 'wpheka-edit-orders-for-woocommerce' ), implode( ', ', $moves ) ) : '';
 	}
 }
