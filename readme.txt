@@ -1,5 +1,5 @@
 === Edit Orders for WooCommerce ===
-Contributors: akshayaswaroop, wpheka
+Contributors: akshayaswaroop
 Tags: edit order, change order, cancel order, order editing, woocommerce
 Requires at least: 6.6
 Tested up to: 7.1
