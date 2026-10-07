@@ -55,6 +55,8 @@ async function shot( page, locator, name ) {
 	try {
 		const admin = await ( await browser.newContext( { viewport: { width: 1280, height: 1000 } } ) ).newPage();
 		await admin.goto( `${ BASE }/wp-login.php` );
+		// The login page focuses and selects the username 200 ms after load; typing before that lands in the wrong field.
+		await admin.waitForFunction( () => document.activeElement && 'user_login' === document.activeElement.id );
 		await admin.fill( '#user_login', 'admin' );
 		await admin.fill( '#user_pass', 'password' );
 		await Promise.all( [ admin.waitForNavigation(), admin.click( '#wp-submit' ) ] );

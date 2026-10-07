@@ -6,6 +6,8 @@
  *   prints ORDER_ID=<id>, RECEIVED=<thank-you URL with key>, VIEW=<My Account URL>.
  *   "guest" makes it a guest order; SKU defaults to EO-TSHIRT.
  * Clean:  wp eval-file .../order-fixture.php clean <id> [<id> ...]
+ * Free shipping: wp eval-file .../order-fixture.php free-shipping on|off
+ *   "on" leaves Alberta's zone with only free shipping; "off" restores its flat rate.
  *
  * @package Edit_Orders_For_WooCommerce
  */
@@ -89,4 +91,29 @@ if ( 'create' === $eo_command ) {
 		wc_update_product_stock( wc_get_product_id_by_sku( $eo_reset_sku ), $eo_reset_qty, 'set' );
 	}
 	WP_CLI::log( 'CLEANED' );
+} elseif ( 'free-shipping' === $eo_command ) {
+	// "on": Alberta's zone offers only free shipping, so a flat-rate order moved there must choose. "off": undo.
+	global $wpdb;
+	$eo_zone = WC_Shipping_Zones::get_zone_matching_package(
+		array(
+			'destination' => array(
+				'country'  => 'CA',
+				'state'    => 'AB',
+				'postcode' => 'T2P 1B3',
+			),
+		)
+	);
+	$eo_on   = isset( $args[1] ) && 'on' === $args[1];
+	foreach ( $eo_zone->get_shipping_methods() as $eo_method ) {
+		if ( 'flat_rate' === $eo_method->id ) {
+			$wpdb->update( "{$wpdb->prefix}woocommerce_shipping_zone_methods", array( 'is_enabled' => $eo_on ? 0 : 1 ), array( 'instance_id' => $eo_method->get_instance_id() ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		} elseif ( 'free_shipping' === $eo_method->id ) {
+			$eo_zone->delete_shipping_method( $eo_method->get_instance_id() );
+		}
+	}
+	if ( $eo_on ) {
+		$eo_zone->add_shipping_method( 'free_shipping' );
+	}
+	WC_Cache_Helper::get_transient_version( 'shipping', true );
+	WP_CLI::log( 'FREE_SHIPPING=' . ( $eo_on ? 'on' : 'off' ) );
 }

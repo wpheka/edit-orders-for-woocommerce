@@ -252,6 +252,13 @@ if ( ! get_user_by( 'login', 'customer' ) ) {
 }
 $edit_orders_seed_log( 'Customer: customer / password (Toronto, ON).' );
 
+// WooCommerce 11 covers the order screen with a "first order" popup on a new store, which
+// blocks the browser tests' clicks. Opt the admin out, as its "Don't show again" link does.
+$edit_orders_seed_admin = get_user_by( 'login', 'admin' );
+if ( $edit_orders_seed_admin ) {
+	update_user_meta( $edit_orders_seed_admin->ID, '_wc_egg_opted_out', '1' );
+}
+
 // HPOS on by default, as for new WooCommerce stores. Only switched while the store has
 // no orders, so a re-run never forces a data sync. Test with HPOS off by running
 // `wp wc hpos disable` (spec section 9).

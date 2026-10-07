@@ -11,6 +11,9 @@
  * shows "Refund $45.20" > apply > the order shows the refund.
  * Scenario 2: address Ontario to Alberta > preview shows "Customer pays $12.00" > apply >
  * the order screen box lists the balance order with its pay link.
+ * Scenario 3: address moves to a zone without the order's shipping method > preview offers
+ * the new options > the chosen one survives a second preview and is applied; changing the
+ * address afterwards clears the options.
  *
  * @package Edit_Orders_For_WooCommerce
  */
@@ -27,6 +30,7 @@ const SHOTS = process.argv[ 2 ] || path.join( __dirname, '..', '..', '.e2e-scree
 const FIXTURE = 'wp-content/plugins/edit-orders-for-woocommerce/tests/e2e/order-fixture.php';
 const created = [];
 let failures = 0;
+let freeShipping = false;
 
 function wp( args ) {
 	return execSync( `npx -y @wordpress/env@10 run cli wp eval-file ${ FIXTURE } ${ args }`, {
@@ -72,6 +76,8 @@ function check( label, condition, detail ) {
 
 	try {
 		await page.goto( `${ BASE }/wp-login.php` );
+		// The login page focuses and selects the username 200 ms after load; typing before that lands in the wrong field.
+		await page.waitForFunction( () => document.activeElement && 'user_login' === document.activeElement.id );
 		await page.fill( '#user_login', 'admin' );
 		await page.fill( '#user_pass', 'password' );
 		await Promise.all( [ page.waitForNavigation(), page.click( '#wp-submit' ) ] );
@@ -124,6 +130,44 @@ function check( label, condition, detail ) {
 		check( 'with its pay link', /pay_for_order=true/.test( await balances.locator( '.edit-orders-pay-link' ).inputValue() ) );
 		await page.locator( '#edit-orders-for-woocommerce' ).screenshot( { path: path.join( SHOTS, '6-balance-box.png' ) } );
 
+		// ----------------------------------------------------------------
+		console.log( 'Scenario 3: the current shipping method is not offered at the new address' );
+		wp( 'free-shipping on' );
+		freeShipping = true;
+		const third = createOrder( 1 );
+		await page.goto( `${ BASE }/wp-admin/admin.php?page=edit-orders-for-woocommerce-editor&order_id=${ third }` );
+		await page.click( '.nav-tab[data-mode="address"]' );
+		const moved = page.locator( '.edit-orders-address[data-type="shipping"]' );
+		await moved.locator( '[name="shipping[address_1]"]' ).fill( '100 8 Ave SW' );
+		await moved.locator( '[name="shipping[city]"]' ).fill( 'Calgary' );
+		await moved.locator( '[name="shipping[postcode]"]' ).fill( 'T2P 1B3' );
+		await moved.locator( 'select[name="shipping[state]"]' ).selectOption( 'AB' );
+		await page.click( '#edit-orders-preview' );
+		await page.waitForSelector( '.edit-orders-rate-choice input[name="shipping_method"]' );
+		check( 'preview offers the new address\'s shipping options', await page.locator( '.edit-orders-rate-choice input[name="shipping_method"]' ).count() === 1 );
+		const rateLabel = ( await page.textContent( '.edit-orders-rate-choice' ) ).trim();
+		check( 'the option shows its price as text', /\$0\.00/.test( rateLabel ) && ! /&#?\w+;/.test( rateLabel ), rateLabel );
+
+		await page.locator( '.edit-orders-rate-choice input[name="shipping_method"]' ).check();
+		await page.click( '#edit-orders-preview' );
+		await page.waitForSelector( '.edit-orders-preview' );
+		check( 'the chosen option is kept after the preview', await page.locator( '.edit-orders-rate-choice input[name="shipping_method"]:checked' ).count() === 1 );
+		await page.screenshot( { path: path.join( SHOTS, '7-rate-choice-preview.png' ), fullPage: true } );
+
+		await Promise.all( [ page.waitForNavigation(), page.click( '#edit-orders-apply' ) ] );
+		check( 'apply goes back to the order with free shipping', /Free shipping/i.test( await page.textContent( '#woocommerce-order-items' ) ), page.url() );
+
+		await page.goto( `${ BASE }/wp-admin/admin.php?page=edit-orders-for-woocommerce-editor&order_id=${ createOrder( 1 ) }` );
+		await page.click( '.nav-tab[data-mode="address"]' );
+		await moved.locator( 'select[name="shipping[state]"]' ).selectOption( 'AB' );
+		await moved.locator( '[name="shipping[city]"]' ).fill( 'Calgary' );
+		await moved.locator( '[name="shipping[postcode]"]' ).fill( 'T2P 1B3' );
+		await page.click( '#edit-orders-preview' );
+		await page.waitForSelector( '.edit-orders-rate-choice input[name="shipping_method"]' );
+		await moved.locator( '[name="shipping[city]"]' ).fill( 'Edmonton' );
+		await moved.locator( '[name="shipping[city]"]' ).dispatchEvent( 'change' );
+		check( 'changing the address clears the old options', await page.locator( '.edit-orders-rate-choice input' ).count() === 0 && await page.locator( '.edit-orders-rate-choice' ).isHidden() );
+
 		check( 'no JavaScript errors from this plugin', errors.length === 0, errors.join( ' | ' ) );
 		if ( foreign.length ) {
 			console.log( `  NOTE  ${ foreign.length } console error(s) from other code: ${ [ ...new Set( foreign ) ].join( ' | ' ) }` );
@@ -134,6 +178,9 @@ function check( label, condition, detail ) {
 		await page.screenshot( { path: path.join( SHOTS, 'failure.png' ), fullPage: true } ).catch( () => {} );
 	} finally {
 		await browser.close();
+		if ( freeShipping ) {
+			wp( 'free-shipping off' );
+		}
 		if ( created.length ) {
 			wp( `clean ${ created.join( ' ' ) }` );
 		}

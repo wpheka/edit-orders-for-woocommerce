@@ -245,7 +245,9 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 
 		$rates = array();
 		foreach ( $data['rates'] as $rate_id => $rate ) {
-			$rates[ $rate_id ] = $rate['label'] . ' (' . wp_strip_all_tags( wc_price( $rate['cost'], array( 'currency' => $order->get_currency() ) ) ) . ')';
+			// Plain text (wc_price() gives "&#36;"): the panel escapes it and the editor inserts it as a text node.
+			$price             = html_entity_decode( wp_strip_all_tags( wc_price( $rate['cost'], array( 'currency' => $order->get_currency() ) ) ), ENT_QUOTES, 'UTF-8' );
+			$rates[ $rate_id ] = $rate['label'] . ' (' . $price . ')';
 		}
 
 		return $rates;

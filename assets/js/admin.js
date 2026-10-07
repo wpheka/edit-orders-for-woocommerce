@@ -170,6 +170,15 @@
 			}
 		);
 
+		// A shipping option chosen for one address may not exist at the next: choose again after previewing.
+		$form.on(
+			'change',
+			'.edit-orders-address :input',
+			function () {
+				$form.find( '.edit-orders-rate-choice' ).empty().prop( 'hidden', true );
+			}
+		);
+
 		// Preview.
 		$form.on(
 			'click',
@@ -185,8 +194,10 @@
 						$panel.html( response.data.html );
 
 						// The current shipping method isn't offered at the new address: choose another.
-						var $choice = $form.find( '.edit-orders-rate-choice' ).empty();
+						// No rates back means the choice (if any) was accepted, so keep it for Apply.
+						var $choice = $form.find( '.edit-orders-rate-choice' );
 						if ( response.data.rates && ! $.isEmptyObject( response.data.rates ) ) {
+							$choice.empty();
 							$.each(
 								response.data.rates,
 								function ( id, label ) {
