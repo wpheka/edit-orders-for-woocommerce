@@ -61,7 +61,7 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 	protected function get_settings_for_default_section() {
 		$defaults = Edit_Orders_For_WooCommerce_Settings::defaults();
 
-		return array(
+		$settings = array(
 			array(
 				'title' => __( 'Editing orders', 'edit-orders-for-woocommerce' ),
 				'type'  => 'title',
@@ -76,14 +76,13 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 				'default' => $defaults['admin_enabled'],
 			),
 			array(
-				'title'    => __( 'Order statuses', 'edit-orders-for-woocommerce' ),
-				'desc'     => __( 'Paid orders in these statuses can be changed, by you and by customers.', 'edit-orders-for-woocommerce' ),
-				'desc_tip' => true,
-				'id'       => $this->field( 'editable_statuses' ),
-				'type'     => 'multiselect',
-				'class'    => 'wc-enhanced-select',
-				'options'  => $this->status_options(),
-				'default'  => $defaults['editable_statuses'],
+				'title'   => __( 'Order statuses', 'edit-orders-for-woocommerce' ),
+				'desc'    => __( 'Paid orders in these statuses can be changed, by you and by customers.', 'edit-orders-for-woocommerce' ),
+				'id'      => $this->field( 'editable_statuses' ),
+				'type'    => 'multiselect',
+				'class'   => 'wc-enhanced-select',
+				'options' => $this->status_options(),
+				'default' => $defaults['editable_statuses'],
 			),
 			array(
 				'type' => 'sectionend',
@@ -145,26 +144,24 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 				'checkboxgroup' => 'end',
 			),
 			array(
-				'title'    => __( 'Cancellations', 'edit-orders-for-woocommerce' ),
-				'desc'     => __( 'Instant cancels and refunds straight away. Approval sends you the request first.', 'edit-orders-for-woocommerce' ),
-				'desc_tip' => true,
-				'id'       => $this->field( 'cancel_mode' ),
-				'type'     => 'select',
-				'class'    => 'wc-enhanced-select',
-				'options'  => array(
+				'title'   => __( 'Cancellations', 'edit-orders-for-woocommerce' ),
+				'desc'    => __( 'Instant cancels and refunds straight away. Approval sends you the request first.', 'edit-orders-for-woocommerce' ),
+				'id'      => $this->field( 'cancel_mode' ),
+				'type'    => 'select',
+				'class'   => 'wc-enhanced-select',
+				'options' => array(
 					'approval' => __( 'I approve each request', 'edit-orders-for-woocommerce' ),
 					'instant'  => __( 'Cancel and refund straight away', 'edit-orders-for-woocommerce' ),
 				),
-				'default'  => $defaults['cancel_mode'],
+				'default' => $defaults['cancel_mode'],
 			),
 			array(
-				'title'    => __( 'Cancel reasons', 'edit-orders-for-woocommerce' ),
-				'desc'     => __( 'One per line. "Other" is always added.', 'edit-orders-for-woocommerce' ),
-				'desc_tip' => true,
-				'id'       => $this->field( 'cancel_reasons' ),
-				'type'     => 'textarea',
-				'css'      => 'min-height: 100px;',
-				'default'  => $defaults['cancel_reasons'],
+				'title'   => __( 'Cancel reasons', 'edit-orders-for-woocommerce' ),
+				'desc'    => __( 'Customers pick one of these reasons when they cancel. Write one reason per line. "Other" is always added at the end of the list, with a box for the customer to explain.', 'edit-orders-for-woocommerce' ),
+				'id'      => $this->field( 'cancel_reasons' ),
+				'type'    => 'textarea',
+				'css'     => 'min-height: 100px;',
+				'default' => $defaults['cancel_reasons'],
 			),
 			array(
 				'title'   => __( 'Require a reason', 'edit-orders-for-woocommerce' ),
@@ -174,17 +171,15 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 				'default' => $defaults['cancel_reason_required'],
 			),
 			array(
-				'title'    => __( 'Cancellation policy', 'edit-orders-for-woocommerce' ),
-				'desc'     => __( 'Shown above the cancel button, for example your refund terms. Leave empty to show nothing.', 'edit-orders-for-woocommerce' ),
-				'desc_tip' => true,
-				'id'       => $this->field( 'cancel_policy' ),
-				'type'     => 'textarea',
-				'default'  => $defaults['cancel_policy'],
+				'title'   => __( 'Cancellation policy', 'edit-orders-for-woocommerce' ),
+				'desc'    => __( 'Shown above the cancel button, for example your refund terms. Leave empty to show nothing.', 'edit-orders-for-woocommerce' ),
+				'id'      => $this->field( 'cancel_policy' ),
+				'type'    => 'textarea',
+				'default' => $defaults['cancel_policy'],
 			),
 			array(
 				'title'             => __( 'Order note length', 'edit-orders-for-woocommerce' ),
 				'desc'              => __( 'Most characters a customer can write in their order note.', 'edit-orders-for-woocommerce' ),
-				'desc_tip'          => true,
 				'id'                => $this->field( 'note_max_length' ),
 				'type'              => 'number',
 				'default'           => $defaults['note_max_length'],
@@ -228,6 +223,30 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 				'id'   => 'edit_orders_advanced',
 			),
 		);
+
+		return array_map( array( $this, 'with_help' ), $settings );
+	}
+
+	/**
+	 * Show a field's description on the page and in its "?" tooltip: many store owners never
+	 * hover the tooltip. Text boxes get the description below the box, as other fields do.
+	 * Checkboxes already show their description as the label.
+	 *
+	 * @param array $field Setting field.
+	 * @return array
+	 */
+	private function with_help( array $field ) {
+		if ( empty( $field['desc'] ) || ! in_array( $field['type'], array( 'number', 'select', 'multiselect', 'textarea' ), true ) ) {
+			return $field;
+		}
+
+		// A string desc_tip is the tooltip; desc stays visible (true would move desc into the tooltip).
+		$field['desc_tip'] = $field['desc'];
+		if ( 'textarea' === $field['type'] ) {
+			$field['desc_at_end'] = true;
+		}
+
+		return $field;
 	}
 
 	/**

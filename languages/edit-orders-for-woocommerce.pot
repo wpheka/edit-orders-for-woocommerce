@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-07T09:11:30+00:00\n"
+"POT-Creation-Date: 2026-10-07T11:09:26+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: edit-orders-for-woocommerce\n"
@@ -623,57 +623,57 @@ msgid "Cancel reasons"
 msgstr ""
 
 #: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:162
-msgid "One per line. \"Other\" is always added."
+msgid "Customers pick one of these reasons when they cancel. Write one reason per line. \"Other\" is always added at the end of the list, with a box for the customer to explain."
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:170
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:169
 msgid "Require a reason"
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:171
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:170
 msgid "Customers must choose or write a reason to cancel"
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:177
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:176
 msgid "Cancellation policy"
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:178
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:177
 msgid "Shown above the cancel button, for example your refund terms. Leave empty to show nothing."
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:185
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:184
 msgid "Order note length"
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:186
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:185
 msgid "Most characters a customer can write in their order note."
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:203
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:202
 msgid "Emails"
 msgstr ""
 
 #. translators: %s: link to the email settings.
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:206
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:205
 #, php-format
 msgid "Turn emails on or off and change their wording in %s. Look for the emails starting \"Order updated\", \"Balance due\", \"Manual refund needed\", \"Cancellation\" and \"Customer changed an order\"."
 msgstr ""
 
 #. translators: %s: link to the email settings.
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:206
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:205
 msgid "WooCommerce > Settings > Emails"
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:215
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:214
 msgid "Advanced"
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:220
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:219
 msgid "Delete data on uninstall"
 msgstr ""
 
-#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:221
+#: includes/admin/class-edit-orders-for-woocommerce-settings-page.php:220
 msgid "Remove the activity log and settings when the plugin is deleted. Balance orders are real orders and are always kept."
 msgstr ""
 
@@ -841,27 +841,27 @@ msgstr ""
 msgid "Shipping re-rated from %1$s to %2$s (%3$s)."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:287
+#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:289
 msgid "The store does not sell to that country."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:292
+#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:294
 msgid "Choose a valid state or province."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:296
+#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:298
 msgid "That postcode is not valid for the country."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:516
+#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:518
 msgid "That shipping option is not available for the new address."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:528
+#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:530
 msgid "The current shipping method is not available for the new address. Choose another one."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:529
+#: includes/engine/class-edit-orders-for-woocommerce-address-change.php:531
 msgid "No shipping is available to the new address."
 msgstr ""
 
