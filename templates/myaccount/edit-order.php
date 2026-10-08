@@ -12,6 +12,7 @@
  * @var int        $seconds_left    Seconds left in the window.
  * @var bool       $cancel_pending  A cancellation request is waiting for the store.
  * @var string     $cancel_mode     instant or approval.
+ * @var string     $refund_method   How a cancel refunds: gateway, on_delivery or store.
  * @var string[]   $reasons         Cancel reasons.
  * @var bool       $reason_required A reason must be given.
  * @var string     $policy          Policy note shown with cancellation.
@@ -219,11 +220,16 @@ $edit_orders_for_woocommerce_currency = array( 'currency' => $order->get_currenc
 					<?php endif; ?>
 					<p class="eofw-hint">
 						<?php
-						echo esc_html(
-							'instant' === $cancel_mode
-								? __( 'Your order is cancelled straight away and refunded to your original payment method.', 'wpheka-edit-orders-for-woocommerce' )
-								: __( 'Your request goes to the store, and we email you when they have answered.', 'wpheka-edit-orders-for-woocommerce' )
-						);
+						$edit_orders_for_woocommerce_refund_method = isset( $refund_method ) ? $refund_method : 'gateway';
+						if ( 'instant' !== $cancel_mode ) {
+							esc_html_e( 'Your request goes to the store, and we email you when they have answered.', 'wpheka-edit-orders-for-woocommerce' );
+						} elseif ( 'on_delivery' === $edit_orders_for_woocommerce_refund_method ) {
+							esc_html_e( 'Your order is cancelled straight away. There is nothing to pay.', 'wpheka-edit-orders-for-woocommerce' );
+						} elseif ( 'store' === $edit_orders_for_woocommerce_refund_method ) {
+							esc_html_e( 'Your order is cancelled straight away, and the store refunds what you paid.', 'wpheka-edit-orders-for-woocommerce' );
+						} else {
+							esc_html_e( 'Your order is cancelled straight away and refunded to your original payment method.', 'wpheka-edit-orders-for-woocommerce' );
+						}
 						?>
 					</p>
 					<button type="submit" class="button wp-element-button eofw-cancel-button"><?php echo esc_html( 'instant' === $cancel_mode ? __( 'Cancel my order', 'wpheka-edit-orders-for-woocommerce' ) : __( 'Ask to cancel', 'wpheka-edit-orders-for-woocommerce' ) ); ?></button>

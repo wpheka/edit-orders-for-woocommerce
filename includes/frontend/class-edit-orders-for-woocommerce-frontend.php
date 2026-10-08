@@ -186,7 +186,12 @@ class Edit_Orders_For_WooCommerce_Frontend {
 			case 'cancel':
 				$reason = isset( $data['reason'] ) ? sanitize_text_field( $data['reason'] ) : '';
 				if ( '__other' === $reason ) {
+					// The form allows 500 characters; a posted form is held to the same.
 					$reason = isset( $data['reason_other'] ) ? sanitize_textarea_field( $data['reason_other'] ) : '';
+					$reason = function_exists( 'mb_substr' ) ? mb_substr( $reason, 0, 500 ) : substr( $reason, 0, 500 );
+				} elseif ( '' !== $reason && ! in_array( $reason, Edit_Orders_For_WooCommerce_Settings::cancel_reasons(), true ) ) {
+					// Only the store's own reasons are offered: anything else wasn't chosen in the form.
+					$reason = '';
 				}
 				$result = Edit_Orders_For_WooCommerce_Cancellation::request( $order, $reason, $actor );
 				if ( is_wp_error( $result ) ) {
@@ -441,6 +446,22 @@ class Edit_Orders_For_WooCommerce_Frontend {
 	}
 
 	/**
+	 * How a cancelled order's money goes back, for the panel's wording: through the
+	 * payment gateway, nothing to return (unpaid cash on delivery), or by the store.
+	 *
+	 * @param WC_Order $order Order.
+	 * @return string gateway, on_delivery or store
+	 */
+	private static function refund_method( WC_Order $order ) {
+		if ( Edit_Orders_For_WooCommerce_Eligibility::is_pay_on_delivery( $order ) ) {
+			return 'on_delivery';
+		}
+		$gateway = wc_get_payment_gateway_by_order( $order );
+
+		return $gateway && $gateway->supports( 'refunds' ) ? 'gateway' : 'store';
+	}
+
+	/**
 	 * Everything the panel template needs, or null when there is nothing to show.
 	 *
 	 * @param WC_Order $order Order.
@@ -477,6 +498,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 			'seconds_left'    => Edit_Orders_For_WooCommerce_Customer_Rules::seconds_left( $order ),
 			'cancel_pending'  => $pending,
 			'cancel_mode'     => Edit_Orders_For_WooCommerce_Settings::get( 'cancel_mode' ),
+			'refund_method'   => self::refund_method( $order ),
 			'reasons'         => Edit_Orders_For_WooCommerce_Settings::cancel_reasons(),
 			'reason_required' => Edit_Orders_For_WooCommerce_Settings::is_on( 'cancel_reason_required' ),
 			'policy'          => (string) Edit_Orders_For_WooCommerce_Settings::get( 'cancel_policy' ),

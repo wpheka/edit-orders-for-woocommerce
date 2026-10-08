@@ -29,13 +29,18 @@ class Edit_Orders_For_WooCommerce_Refunds {
 	 * - an unpaid pay-on-delivery order: the refund lowers what is collected on delivery;
 	 * - a zero net amount, where a refund only re-books tax between rates (address changes).
 	 *
-	 * @param WC_Order $order        Order.
-	 * @param array[]  $refund_lines Refund lines keyed by item ID.
-	 * @param float    $amount       Total, tax included.
-	 * @param string   $reason       Reason shown on the refund.
+	 * WooCommerce's "your order has been refunded" email goes out only when money is
+	 * sent back: a refund that is only recorded would tell the customer something
+	 * that didn't happen. Callers with their own email (cancellation) turn it off.
+	 *
+	 * @param WC_Order $order          Order.
+	 * @param array[]  $refund_lines   Refund lines keyed by item ID.
+	 * @param float    $amount         Total, tax included.
+	 * @param string   $reason         Reason shown on the refund.
+	 * @param bool     $customer_email Allow WooCommerce's refunded email when money is sent back.
 	 * @return array|WP_Error { refund_id, manual, gateway_error, on_delivery }
 	 */
-	public static function refund( WC_Order $order, array $refund_lines, $amount, $reason ) {
+	public static function refund( WC_Order $order, array $refund_lines, $amount, $reason, $customer_email = true ) {
 		$on_delivery = Edit_Orders_For_WooCommerce_Eligibility::is_pay_on_delivery( $order );
 		$gateway     = wc_get_payment_gateway_by_order( $order );
 		$can_send    = ! $on_delivery && (float) $amount > 0 && $gateway && $gateway->supports( 'refunds' );
@@ -49,15 +54,31 @@ class Edit_Orders_For_WooCommerce_Refunds {
 			'restock_items'  => true,
 		);
 
+		// WooCommerce's refunded email checks a different filter for a partial refund.
+		$no_email = function () {
+			return false;
+		};
+		$quiet    = function () use ( $no_email ) {
+			add_filter( 'woocommerce_email_enabled_customer_refunded_order', $no_email );
+			add_filter( 'woocommerce_email_enabled_customer_partially_refunded_order', $no_email );
+		};
+		if ( ! $customer_email || ! $can_send ) {
+			$quiet();
+		}
+
 		$gateway_error = '';
 		$refund        = wc_create_refund( $args );
 
 		if ( is_wp_error( $refund ) && $can_send ) {
-			// wc_create_refund() deleted the refund record when the gateway failed; record it without payment.
+			// wc_create_refund() deleted the refund record when the gateway failed; record it
+			// without payment, and without telling the customer it was refunded.
 			$gateway_error          = $refund->get_error_message();
 			$args['refund_payment'] = false;
-			$refund                 = wc_create_refund( $args );
+			$quiet();
+			$refund = wc_create_refund( $args );
 		}
+		remove_filter( 'woocommerce_email_enabled_customer_refunded_order', $no_email );
+		remove_filter( 'woocommerce_email_enabled_customer_partially_refunded_order', $no_email );
 
 		if ( is_wp_error( $refund ) ) {
 			return $refund;

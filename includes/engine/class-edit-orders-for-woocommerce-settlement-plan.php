@@ -82,6 +82,14 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	private $refunded_at_build = null;
 
 	/**
+	 * The order's lines when the plan was built (see line_states()), so a plan applied
+	 * later can tell whether the store changed the order in between.
+	 *
+	 * @var array|null
+	 */
+	private $lines_at_build = null;
+
+	/**
 	 * Build a plan.
 	 *
 	 * @param WC_Order                               $order      Order.
@@ -93,6 +101,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		$plan->order_id          = $order->get_id();
 		$plan->errors            = $change_set->get_errors();
 		$plan->refunded_at_build = (float) $order->get_total_refunded();
+		$plan->lines_at_build    = self::line_states( $order );
 
 		foreach ( $change_set->get_changes() as $change ) {
 			if ( 'add' === $change['type'] ) {
@@ -177,6 +186,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 
 		$this->balance_items[] = array(
 			'type'       => 'product',
+			'for_item'   => $item->get_id(),
 			'product_id' => $product->get_id(),
 			'quantity'   => $extra,
 			'subtotal'   => Edit_Orders_For_WooCommerce_Pricing::round( (float) $item->get_subtotal() / $current * $extra ),
@@ -226,6 +236,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			// A fee taxed like the new variation (its tax status and class), so the tax is reported correctly.
 			$this->balance_items[] = array(
 				'type'      => 'fee',
+				'for_item'  => $item->get_id(),
 				/* translators: 1: old product name, 2: new product name. */
 				'name'      => sprintf( __( 'Price difference: %1$s to %2$s', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $new->get_name() ),
 				'tax_class' => $new->get_tax_class(),
@@ -233,7 +244,11 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 				'total'     => $difference,
 			);
 		} elseif ( $difference < 0 ) {
-			$this->refund_lines[ $item->get_id() ] = Edit_Orders_For_WooCommerce_Pricing::refund_for_amount( $item, abs( $difference ) );
+			$line = Edit_Orders_For_WooCommerce_Pricing::refund_for_amount( $item, abs( $difference ) );
+			// A line that cost nothing (a 100% coupon) has nothing to refund: no empty refund.
+			if ( Edit_Orders_For_WooCommerce_Pricing::refund_line_amount( $line ) > 0 ) {
+				$this->refund_lines[ $item->get_id() ] = $line;
+			}
 		}
 
 		$this->repoints[] = array(
@@ -407,6 +422,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			'address_update' => $this->address_update,
 			'descriptions'   => $this->descriptions,
 			'refunded'       => $this->refunded_at_build,
+			'lines'          => $this->lines_at_build,
 		);
 	}
 
@@ -433,7 +449,8 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	 * @return true|WP_Error
 	 */
 	public function still_applies( WC_Order $order ) {
-		if ( $order->has_status( array( 'cancelled', 'refunded', 'failed', 'trash' ) ) ) {
+		// Completed means shipped: a swap or more units can't be added to a parcel that has left.
+		if ( $order->has_status( array( 'completed', 'cancelled', 'refunded', 'failed', 'trash' ) ) ) {
 			return new WP_Error(
 				'edit_orders_for_woocommerce_original_closed',
 				/* translators: %s: order status. */
@@ -443,6 +460,12 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 
 		if ( null !== $this->refunded_at_build && abs( (float) $order->get_total_refunded() - $this->refunded_at_build ) > 0.001 ) {
 			return new WP_Error( 'edit_orders_for_woocommerce_refunded_since', __( 'the original order was refunded after the change was made', 'wpheka-edit-orders-for-woocommerce' ) );
+		}
+
+		// The store may have changed the order in WooCommerce's own editor (on-hold orders are
+		// editable there): the plan's lines, refunds and repoints may no longer fit.
+		if ( null !== $this->lines_at_build && self::line_states( $order ) !== $this->lines_at_build ) {
+			return new WP_Error( 'edit_orders_for_woocommerce_changed_since', __( 'the original order\'s items, shipping or fees were changed after the change was made', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		if ( $this->get_refund_amount() > (float) $order->get_remaining_refund_amount() + 0.001 ) {
@@ -469,7 +492,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 
 		$billing  = isset( $this->address_update['billing'] ) ? $this->address_update['billing'] : $order->get_address( 'billing' );
 		$shipping = isset( $this->address_update['shipping'] ) ? $this->address_update['shipping'] : $order->get_address( 'shipping' );
-		$location = Edit_Orders_For_WooCommerce_Address_Change::tax_location( $billing, $shipping );
+		$location = Edit_Orders_For_WooCommerce_Address_Change::tax_location( $order, $billing, $shipping );
 		$args     = array(
 			'country'  => $location[0],
 			'state'    => $location[1],
@@ -573,6 +596,30 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	}
 
 	/**
+	 * A comparable record of the order's lines: items, shipping and fees, with what
+	 * they are and what they cost. Stock and other line meta are left out.
+	 *
+	 * @param WC_Order $order Order.
+	 * @return array
+	 */
+	private static function line_states( WC_Order $order ) {
+		$states = array();
+		foreach ( $order->get_items( array( 'line_item', 'shipping', 'fee' ) ) as $item_id => $item ) {
+			$states[ (string) $item_id ] = array(
+				$item->get_type(),
+				$item instanceof WC_Order_Item_Product ? (int) $item->get_product_id() : 0,
+				$item instanceof WC_Order_Item_Product ? (int) $item->get_variation_id() : 0,
+				(int) $item->get_quantity(),
+				wc_format_decimal( $item->get_total(), wc_get_price_decimals() ),
+				wc_format_decimal( $item->get_total_tax(), wc_get_price_decimals() ),
+			);
+		}
+		ksort( $states );
+
+		return $states;
+	}
+
+	/**
 	 * Restore a stored plan.
 	 *
 	 * @param array $data Data from to_array().
@@ -588,6 +635,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		$plan->descriptions   = isset( $data['descriptions'] ) ? (array) $data['descriptions'] : array();
 		// Plans stored before this was recorded skip the "refunded since" check.
 		$plan->refunded_at_build = isset( $data['refunded'] ) ? (float) $data['refunded'] : null;
+		$plan->lines_at_build    = isset( $data['lines'] ) ? (array) $data['lines'] : null;
 
 		return $plan;
 	}

@@ -124,10 +124,23 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 					)
 				);
 				$order->save();
+				// The gateways' filters keep a cash on delivery order without a paid date when it
+				// goes to Processing; make sure they are loaded in this request.
+				WC()->payment_gateways();
 				$balance->update_status( 'processing', __( 'Payment to be made upon delivery, with the original order.', 'wpheka-edit-orders-for-woocommerce' ) );
 
 				$result = array(
 					'status'           => 'collect_on_delivery',
+					'plan'             => $plan,
+					'balance_order_id' => $balance->get_id(),
+				);
+			} elseif ( (float) $balance->get_total() <= 0 ) {
+				// Nothing to pay (a product added at 0.00, a line on a 100% coupon): WooCommerce
+				// can't take a payment of 0.00, so the balance order is completed now and applies.
+				$balance->payment_complete();
+
+				$result = array(
+					'status'           => 'applied',
 					'plan'             => $plan,
 					'balance_order_id' => $balance->get_id(),
 				);
@@ -187,12 +200,21 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 
 		// Money first: if the refund can't even be recorded, nothing else changes.
 		if ( $plan->get_refund_lines() ) {
+			// Replacement items or a swapped variation are still on their way: a refund that
+			// happens to equal what is left must not switch the order to Refunded.
+			$keep_status = function () {
+				return false;
+			};
+			if ( $plan->get_balance_items() || $plan->get_repoints() ) {
+				add_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
+			}
 			$refund = Edit_Orders_For_WooCommerce_Refunds::refund(
 				$order,
 				$plan->get_refund_lines(),
 				$plan->get_refund_amount(),
 				__( 'Order edited', 'wpheka-edit-orders-for-woocommerce' )
 			);
+			remove_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
 
 			if ( is_wp_error( $refund ) ) {
 				$order->add_order_note(
@@ -233,6 +255,22 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 					$shipping->save();
 				}
 			}
+		}
+
+		// The paid balance order now holds part of what some lines (and the shipping) cost.
+		// Record it: a later edit of those lines, or of the address, would otherwise refund
+		// only what the original order holds. Refunds for that part go through the balance order.
+		if ( $balance ) {
+			foreach ( $plan->get_balance_items() as $line ) {
+				$item = empty( $line['for_item'] ) ? null : $order->get_item( $line['for_item'] );
+				if ( $item instanceof WC_Order_Item_Product ) {
+					$item->update_meta_data( Edit_Orders_For_WooCommerce_Balance_Orders::LINE_META, $balance->get_id() );
+					$item->save();
+				}
+			}
+			$applied   = (array) $order->get_meta( Edit_Orders_For_WooCommerce_Balance_Orders::APPLIED_BALANCES_META );
+			$applied[] = $balance->get_id();
+			$order->update_meta_data( Edit_Orders_For_WooCommerce_Balance_Orders::APPLIED_BALANCES_META, array_values( array_unique( array_filter( array_map( 'absint', $applied ) ) ) ) );
 		}
 
 		$order->add_order_note(

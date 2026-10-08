@@ -213,7 +213,7 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 			),
 			array(
 				'title'   => __( 'Delete data on uninstall', 'wpheka-edit-orders-for-woocommerce' ),
-				'desc'    => __( 'Remove the activity log and settings when the plugin is deleted. Balance orders are real orders and are always kept.', 'wpheka-edit-orders-for-woocommerce' ),
+				'desc'    => __( 'Remove the activity log, the settings and the plugin\'s data on orders (manual refund flags and cancellation requests) when the plugin is deleted. Balance orders are real orders and are always kept.', 'wpheka-edit-orders-for-woocommerce' ),
 				'id'      => 'edit_orders_for_woocommerce_delete_data',
 				'type'    => 'checkbox',
 				'default' => 'no',

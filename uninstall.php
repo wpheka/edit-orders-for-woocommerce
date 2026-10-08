@@ -27,4 +27,11 @@ if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->prefix . 'wc_
 }
 
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( 'edit_orders_for_woocommerce_' ) . '%' ) );
+
+// Transients: one-time messages, rate limit counters, admin notices and the pending requests count.
+foreach ( array( 'eofw_', 'edit_orders_for_woocommerce_' ) as $edit_orders_for_woocommerce_prefix ) {
+	foreach ( array( '_transient_', '_transient_timeout_' ) as $edit_orders_for_woocommerce_kind ) {
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( $edit_orders_for_woocommerce_kind . $edit_orders_for_woocommerce_prefix ) . '%' ) );
+	}
+}
 // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange

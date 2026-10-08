@@ -38,6 +38,17 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 	const OPEN_BALANCE_META = '_edit_orders_for_woocommerce_open_balance';
 
 	/**
+	 * Line meta: the balance order that holds part of what this line now costs
+	 * (extra units or a price difference).
+	 */
+	const LINE_META = '_edit_orders_for_woocommerce_balance_order';
+
+	/**
+	 * Order meta: balance orders whose changes were applied to this order.
+	 */
+	const APPLIED_BALANCES_META = '_edit_orders_for_woocommerce_applied_balances';
+
+	/**
 	 * Statuses in which a balance order is still waiting for payment.
 	 */
 	const OPEN_STATUSES = array( 'pending', 'failed', 'on-hold' );
@@ -53,6 +64,8 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		add_action( 'woocommerce_order_status_cancelled', array( __CLASS__, 'close_for_original' ) );
 		add_action( 'woocommerce_order_status_refunded', array( __CLASS__, 'close_for_original' ) );
 		add_action( 'woocommerce_order_status_failed', array( __CLASS__, 'close_for_original' ) );
+		// Completed means shipped: an unpaid balance for changes to it can't apply any more.
+		add_action( 'woocommerce_order_status_completed', array( __CLASS__, 'close_for_original' ) );
 	}
 
 	/**
@@ -72,6 +85,25 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		if ( $balance ) {
 			/* translators: %s: original order status. */
 			$balance->update_status( 'cancelled', sprintf( __( 'The original order is now %s.', 'wpheka-edit-orders-for-woocommerce' ), wc_get_order_status_name( $order->get_status() ) ) );
+		}
+
+		// Paid balance orders hold money for this order too. Cancelling or refunding it from
+		// WooCommerce's own screen doesn't touch them: name them, so they get refunded as well.
+		if ( $order->has_status( array( 'cancelled', 'refunded' ) ) ) {
+			foreach ( (array) $order->get_meta( self::APPLIED_BALANCES_META ) as $paid_id ) {
+				$paid = wc_get_order( (int) $paid_id );
+				$left = $paid ? (float) $paid->get_remaining_refund_amount() : 0.0;
+				if ( $paid && $paid->get_date_paid() && $left > 0 ) {
+					$order->add_order_note(
+						sprintf(
+							/* translators: 1: balance order number, 2: amount. */
+							__( 'Balance order #%1$s was paid for changes to this order and still holds %2$s. Refund it too if the customer is owed it.', 'wpheka-edit-orders-for-woocommerce' ),
+							$paid->get_order_number(),
+							wc_price( $left, array( 'currency' => $paid->get_currency() ) )
+						)
+					);
+				}
+			}
 		}
 	}
 
@@ -189,6 +221,23 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 	}
 
 	/**
+	 * Is the order's balance order paid but not applied yet? Between payment and the
+	 * plan running, a second edit could refund the same line again: it waits instead.
+	 *
+	 * @param WC_Order $order Original order.
+	 * @return bool
+	 */
+	public static function is_applying( WC_Order $order ) {
+		$balance_id = (int) $order->get_meta( self::OPEN_BALANCE_META );
+		$balance    = $balance_id ? wc_get_order( $balance_id ) : null;
+
+		return $balance
+			&& ! in_array( $balance->get_status(), self::OPEN_STATUSES, true )
+			&& ! $balance->has_status( array( 'cancelled', 'refunded', 'trash' ) )
+			&& ! $balance->get_meta( self::APPLIED_META );
+	}
+
+	/**
 	 * Apply a balance order's plan to the original order once it is paid.
 	 *
 	 * Hooked to payment complete and the processing and completed statuses; the
@@ -224,14 +273,20 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$balance->update_meta_data( self::APPLIED_META, time() );
 		$balance->save();
 
-		$plan   = Edit_Orders_For_WooCommerce_Settlement_Plan::from_array( $data );
-		$result = $plan->still_applies( $order );
+		// Only the order's current balance applies. One paid after it was cancelled (a slow
+		// gateway or webhook) may have been replaced by a newer change: leave that one waiting
+		// and flag the late payment for a refund.
+		$current = (int) $order->get_meta( self::OPEN_BALANCE_META ) === $balance->get_id();
+		$plan    = Edit_Orders_For_WooCommerce_Settlement_Plan::from_array( $data );
+		$result  = $current ? $plan->still_applies( $order ) : new WP_Error( 'edit_orders_for_woocommerce_balance_superseded', __( 'it was paid after being cancelled', 'wpheka-edit-orders-for-woocommerce' ) );
 		if ( true === $result ) {
 			$result = Edit_Orders_For_WooCommerce_Settlement_Executor::run( $order, $plan, $balance );
 		}
 
 		$order = wc_get_order( $order->get_id() );
-		$order->delete_meta_data( self::OPEN_BALANCE_META );
+		if ( $current ) {
+			$order->delete_meta_data( self::OPEN_BALANCE_META );
+		}
 		if ( is_wp_error( $result ) ) {
 			$order->add_order_note(
 				sprintf(

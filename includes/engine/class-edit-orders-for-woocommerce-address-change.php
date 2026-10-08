@@ -42,6 +42,12 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 			return new WP_Error( 'edit_orders_for_woocommerce_address_refunded', __( 'This order already has a refund, so its address can no longer be changed here.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
+		// A paid balance order holds part of what the order now costs (shipping, items, tax):
+		// re-rating from the original order's figures would settle the wrong difference.
+		if ( $order->get_meta( Edit_Orders_For_WooCommerce_Balance_Orders::APPLIED_BALANCES_META ) ) {
+			return new WP_Error( 'edit_orders_for_woocommerce_address_balance', __( 'Part of this order was paid on a balance order, so its address can no longer be changed here.', 'wpheka-edit-orders-for-woocommerce' ) );
+		}
+
 		$old_billing  = $order->get_address( 'billing' );
 		$old_shipping = $order->get_address( 'shipping' );
 		$new_billing  = $old_billing;
@@ -66,8 +72,8 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 			$descriptions[] = sprintf( __( '%1$s address changed to %2$s.', 'wpheka-edit-orders-for-woocommerce' ), 'billing' === $type ? __( 'Billing', 'wpheka-edit-orders-for-woocommerce' ) : __( 'Shipping', 'wpheka-edit-orders-for-woocommerce' ), self::describe( $merged ) );
 		}
 
-		$old_location = self::tax_location( $old_billing, $old_shipping );
-		$new_location = self::tax_location( $new_billing, $new_shipping );
+		$old_location = self::tax_location( $order, $old_billing, $old_shipping );
+		$new_location = self::tax_location( $order, $new_billing, $new_shipping );
 		$tax_moves    = wc_tax_enabled() && $old_location !== $new_location;
 
 		// Re-rate shipping when the destination moved.
@@ -302,22 +308,57 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 	}
 
 	/**
-	 * The location tax is calculated for, as WooCommerce does for orders.
+	 * Where an order with these addresses is taxed, by WooCommerce's own rule
+	 * (WC_Abstract_Order::get_tax_location()): the store's "tax based on" setting, billing
+	 * when there is no shipping country, local pickup taxed at the shop, the shop's address
+	 * when the country is empty, and the woocommerce_order_get_tax_location filter.
 	 *
-	 * @param array $billing  Billing address.
-	 * @param array $shipping Shipping address.
+	 * Worked out here rather than on a copy of the order: with the posts storage in
+	 * WooCommerce 9.0, changing a cloned order's address also changed the cached original.
+	 *
+	 * @param WC_Order $order    Order.
+	 * @param array    $billing  Billing address.
+	 * @param array    $shipping Shipping address.
 	 * @return array country, state, postcode, city
 	 */
-	public static function tax_location( array $billing, array $shipping ) {
+	public static function tax_location( WC_Order $order, array $billing, array $shipping ) {
 		$based_on = get_option( 'woocommerce_tax_based_on' );
-
-		if ( 'base' === $based_on ) {
-			return array( WC()->countries->get_base_country(), WC()->countries->get_base_state(), WC()->countries->get_base_postcode(), WC()->countries->get_base_city() );
+		if ( 'shipping' === $based_on && '' === (string) $shipping['country'] ) {
+			$based_on = 'billing';
 		}
 
-		$address = ( 'shipping' === $based_on && '' !== $shipping['country'] ) ? $shipping : $billing;
+		$address = 'billing' === $based_on ? $billing : $shipping;
+		$args    = array(
+			'country'  => (string) $address['country'],
+			'state'    => (string) $address['state'],
+			'postcode' => (string) $address['postcode'],
+			'city'     => (string) $address['city'],
+		);
 
-		return array( $address['country'], $address['state'], $address['postcode'], $address['city'] );
+		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own filters, applied as it applies them.
+		$apply_base_tax = true === apply_filters( 'woocommerce_apply_base_tax_for_local_pickup', true );
+		$local_pickup   = (array) apply_filters( 'woocommerce_local_pickup_methods', array( 'legacy_local_pickup', 'local_pickup' ) );
+		$method_ids     = array();
+		foreach ( $order->get_shipping_methods() as $method ) {
+			$method_ids[] = $method->get_method_id();
+		}
+		if ( $apply_base_tax && array_intersect( $method_ids, $local_pickup ) ) {
+			$based_on = 'base';
+		}
+
+		if ( 'base' === $based_on || '' === $args['country'] ) {
+			$args = array(
+				'country'  => WC()->countries->get_base_country(),
+				'state'    => WC()->countries->get_base_state(),
+				'postcode' => WC()->countries->get_base_postcode(),
+				'city'     => WC()->countries->get_base_city(),
+			);
+		}
+
+		$args = apply_filters( 'woocommerce_order_get_tax_location', $args, $order );
+		// phpcs:enable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+
+		return array( $args['country'], $args['state'], $args['postcode'], $args['city'] );
 	}
 
 	/**
@@ -384,7 +425,11 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 			if ( ! $taxable ) {
 				return array();
 			}
-			$args['tax_class'] = self::shipping_tax_class( $order );
+			$class = self::shipping_tax_class( $order );
+			if ( false === $class ) {
+				return array();
+			}
+			$args['tax_class'] = $class;
 			$rates             = WC_Tax::find_shipping_rates( $args );
 		} elseif ( $item instanceof WC_Order_Item_Fee ) {
 			if ( 'taxable' !== $item->get_tax_status() ) {
@@ -393,8 +438,8 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 			$args['tax_class'] = $item->get_tax_class();
 			$rates             = WC_Tax::find_rates( $args );
 		} else {
-			$product = $item->get_product();
-			if ( ! $product || ! $product->is_taxable() ) {
+			// The line's own status, as WooCommerce taxes it: a deleted product counts as taxable.
+			if ( 'taxable' !== $item->get_tax_status() ) {
 				return array();
 			}
 			$args['tax_class'] = $item->get_tax_class();
@@ -410,13 +455,12 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 	}
 
 	/**
-	 * The tax class for shipping, resolving "inherit" from the order's lines.
-	 *
-	 * Simplified from WooCommerce's cart logic: the standard class when any
-	 * shippable taxable line uses it, otherwise the first line's class.
+	 * The shipping tax class, as WooCommerce works it out in calculate_taxes(): the
+	 * store's setting, or for "inherit" the first class (in the store's tax class order)
+	 * among the items taxed as "taxable" or "shipping only". False means no shipping tax.
 	 *
 	 * @param WC_Order $order Order.
-	 * @return string
+	 * @return string|false
 	 */
 	private static function shipping_tax_class( WC_Order $order ) {
 		$class = get_option( 'woocommerce_shipping_tax_class' );
@@ -424,19 +468,72 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 			return (string) $class;
 		}
 
-		$classes = array();
-		foreach ( $order->get_items() as $item ) {
-			$product = $item->get_product();
-			if ( $product && $product->needs_shipping() && $product->is_taxable() ) {
-				$classes[] = $item->get_tax_class();
+		$found = array_intersect( array_merge( array( '' ), WC_Tax::get_tax_class_slugs() ), $order->get_items_tax_classes() );
+		if ( $found ) {
+			return (string) current( $found );
+		}
+
+		// Orders without product lines have no class to inherit: WooCommerce uses the standard class.
+		return 0 === count( $order->get_items() ) ? '' : false;
+	}
+
+	/**
+	 * Would this order get free shipping from this method? WooCommerce's own rule
+	 * (WC_Shipping_Free_Shipping::is_available()), applied to the order instead of
+	 * the cart: a free shipping coupon on the order, and/or its item subtotal as the
+	 * cart would display it, less discounts unless the method ignores them.
+	 *
+	 * @param WC_Order                  $order  Order.
+	 * @param WC_Shipping_Free_Shipping $method Free shipping method.
+	 * @return bool
+	 */
+	private static function free_shipping_qualifies( WC_Order $order, WC_Shipping_Free_Shipping $method ) {
+		$has_coupon = false;
+		foreach ( $order->get_coupon_codes() as $code ) {
+			$coupon = new WC_Coupon( $code );
+			if ( $coupon->get_id() && $coupon->get_free_shipping() ) {
+				$has_coupon = true;
+				break;
 			}
 		}
 
-		if ( ! $classes || in_array( '', $classes, true ) ) {
-			return '';
+		$incl_tax = 'incl' === get_option( 'woocommerce_tax_display_cart' );
+		$total    = 0.0;
+		foreach ( $order->get_items() as $item ) {
+			$total += (float) $item->get_subtotal() + ( $incl_tax ? (float) $item->get_subtotal_tax() : 0.0 );
+		}
+		if ( 'no' === $method->ignore_discounts ) {
+			$total -= (float) $order->get_discount_total() + ( $incl_tax ? (float) $order->get_discount_tax() : 0.0 );
+		}
+		$has_min = Edit_Orders_For_WooCommerce_Pricing::round( $total ) >= (float) $method->min_amount;
+
+		switch ( $method->requires ) {
+			case 'min_amount':
+				$available = $has_min;
+				break;
+			case 'coupon':
+				$available = $has_coupon;
+				break;
+			case 'both':
+				$available = $has_min && $has_coupon;
+				break;
+			case 'either':
+				$available = $has_min || $has_coupon;
+				break;
+			default:
+				$available = true;
 		}
 
-		return (string) $classes[0];
+		/**
+		 * Whether an edited order qualifies for a free shipping method after an address change.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param bool                      $available Whether free shipping applies.
+		 * @param WC_Order                  $order     Order.
+		 * @param WC_Shipping_Free_Shipping $method    Free shipping method.
+		 */
+		return (bool) apply_filters( 'edit_orders_for_woocommerce_free_shipping_available', $available, $order, $method );
 	}
 
 	/**
@@ -501,7 +598,18 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 		$rates = array();
 		$zone  = WC_Shipping_Zones::get_zone_matching_package( $package );
 		foreach ( $zone->get_shipping_methods( true ) as $method ) {
-			foreach ( (array) $method->get_rates_for_package( $package ) as $rate ) {
+			if ( $method instanceof WC_Shipping_Free_Shipping && '' !== (string) $method->requires ) {
+				// Core decides a minimum amount or coupon from WC()->cart: the visitor's
+				// cart (or the store owner's), not this order. Decide it from the order.
+				$method->rates = array();
+				if ( self::free_shipping_qualifies( $order, $method ) ) {
+					$method->calculate_shipping( $package );
+				}
+				$method_rates = $method->rates;
+			} else {
+				$method_rates = $method->get_rates_for_package( $package );
+			}
+			foreach ( (array) $method_rates as $rate ) {
 				$rates[ $rate->get_id() ] = array(
 					'cost'        => Edit_Orders_For_WooCommerce_Pricing::round( $rate->get_cost() ),
 					'method_id'   => $rate->get_method_id(),

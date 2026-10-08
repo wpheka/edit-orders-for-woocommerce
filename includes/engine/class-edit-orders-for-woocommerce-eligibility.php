@@ -57,6 +57,8 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 			$result = new WP_Error( 'edit_orders_for_woocommerce_refunded', __( 'This order is fully refunded.', 'wpheka-edit-orders-for-woocommerce' ) );
 		} elseif ( Edit_Orders_For_WooCommerce_Balance_Orders::get_open_balance_order( $order ) ) {
 			$result = new WP_Error( 'edit_orders_for_woocommerce_open_balance', __( 'This order has an unpaid balance order. Cancel it or wait for payment before editing again.', 'wpheka-edit-orders-for-woocommerce' ) );
+		} elseif ( Edit_Orders_For_WooCommerce_Balance_Orders::is_applying( $order ) ) {
+			$result = new WP_Error( 'edit_orders_for_woocommerce_applying', __( 'A balance order for this order was just paid and its changes are being applied. Try again in a moment.', 'wpheka-edit-orders-for-woocommerce' ) );
 		} elseif ( self::is_authorization_only( $order ) ) {
 			// A refund would void the whole authorization (Stripe does this).
 			$result = new WP_Error( 'edit_orders_for_woocommerce_uncaptured', __( 'This payment is authorized but not captured yet. Capture it before editing.', 'wpheka-edit-orders-for-woocommerce' ) );
@@ -97,6 +99,22 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 		if ( 0 !== (int) $order->get_qty_refunded_for_item( $item->get_id() ) || 0.0 !== (float) $order->get_total_refunded_for_item( $item->get_id() ) ) {
 			/* translators: %s: product name. */
 			return new WP_Error( 'edit_orders_for_woocommerce_item_refunded', sprintf( __( '"%s" already has a refund, so it can no longer be changed.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name() ) );
+		}
+
+		// Part of this line was paid on a balance order (extra units or a price difference):
+		// changing it here would refund only the original part. Version 1 refuses it.
+		$balance_id = (int) $item->get_meta( Edit_Orders_For_WooCommerce_Balance_Orders::LINE_META );
+		if ( $balance_id ) {
+			$balance = wc_get_order( $balance_id );
+			return new WP_Error(
+				'edit_orders_for_woocommerce_item_balance',
+				sprintf(
+					/* translators: 1: product name, 2: balance order number. */
+					__( 'Part of "%1$s" was paid on balance order #%2$s, so it can no longer be changed here. Refund that part from balance order #%2$s.', 'wpheka-edit-orders-for-woocommerce' ),
+					$item->get_name(),
+					$balance ? $balance->get_order_number() : $balance_id
+				)
+			);
 		}
 
 		if ( ! $item->get_product() ) {

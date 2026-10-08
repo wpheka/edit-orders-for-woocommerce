@@ -9,7 +9,7 @@ export MSYS_NO_PATHCONV=1
 WPENV="npx -y @wordpress/env@11"
 CONTAINER="${EO_CONTAINER:-cli}"
 DIR="wp-content/plugins/edit-orders-for-woocommerce/tests/functional"
-SUITES="${1:-p1-engine p2-address-cod m1-admin m2-customer m3-settings m4-hardening m5-matrix}"
+SUITES="${1:-p1-engine p2-address-cod m1-admin m2-customer m3-settings m4-hardening m5-matrix m6-review}"
 status=0
 
 for hpos in enable disable; do

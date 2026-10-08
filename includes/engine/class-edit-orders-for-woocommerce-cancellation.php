@@ -211,7 +211,8 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 			return false;
 		};
 		add_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
-		$refund = Edit_Orders_For_WooCommerce_Refunds::refund( $order, self::remaining_lines( $order ), $amount, $reason );
+		// The cancellation email states the refund, so WooCommerce's refunded email would be a second one.
+		$refund = Edit_Orders_For_WooCommerce_Refunds::refund( $order, self::remaining_lines( $order ), $amount, $reason, false );
 		remove_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
 
 		if ( is_wp_error( $refund ) ) {
@@ -393,6 +394,31 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 	}
 
 	/**
+	 * Tax rate IDs on the earlier refunds of one line.
+	 *
+	 * @param WC_Order $order   Order.
+	 * @param int      $item_id Line ID.
+	 * @param string   $type    Line type.
+	 * @return int[]
+	 */
+	private static function refunded_rate_ids( WC_Order $order, $item_id, $type ) {
+		$ids = array();
+		foreach ( $order->get_refunds() as $refund ) {
+			foreach ( $refund->get_items( $type ) as $refunded ) {
+				if ( (int) $refunded->get_meta( '_refunded_item_id' ) !== (int) $item_id ) {
+					continue;
+				}
+				$taxes = $refunded->get_taxes();
+				foreach ( isset( $taxes['total'] ) ? array_keys( $taxes['total'] ) : array() as $rate_id ) {
+					$ids[] = $rate_id;
+				}
+			}
+		}
+
+		return $ids;
+	}
+
+	/**
 	 * Refund lines for everything not yet refunded: items, shipping and fees.
 	 *
 	 * @param WC_Order $order Order.
@@ -406,13 +432,20 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 			$qty    = 'line_item' === $type ? (int) $item->get_quantity() + (int) $order->get_qty_refunded_for_item( $item_id ) : 0;
 			$total  = (float) $item->get_total() - (float) $order->get_total_refunded_for_item( $item_id, $type );
 			$taxes  = $item->get_taxes();
+			$paid   = isset( $taxes['total'] ) ? array_filter(
+				$taxes['total'],
+				static function ( $tax ) {
+					return '' !== $tax;
+				}
+			) : array();
 			$refund = array();
 
-			foreach ( isset( $taxes['total'] ) ? $taxes['total'] : array() as $rate_id => $tax ) {
-				if ( '' === $tax ) {
-					continue;
-				}
-				$left = (float) $tax - (float) $order->get_tax_refunded_for_item( $item_id, $rate_id, $type );
+			// An address change can refund one rate and charge another in the same refund
+			// (Alberta GST back, Ontario HST charged): that rate is on the refund, not the
+			// line. Reverse every rate the line or its refunds carry, so nothing stays booked.
+			foreach ( array_unique( array_merge( array_keys( $paid ), self::refunded_rate_ids( $order, $item_id, $type ) ) ) as $rate_id ) {
+				$tax  = isset( $paid[ $rate_id ] ) ? (float) $paid[ $rate_id ] : 0.0;
+				$left = $tax - (float) $order->get_tax_refunded_for_item( $item_id, $rate_id, $type );
 				if ( abs( $left ) > 0.001 ) {
 					$refund[ $rate_id ] = Edit_Orders_For_WooCommerce_Pricing::round( $left );
 				}

@@ -241,7 +241,11 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 			return new WP_Error( 'edit_orders_for_woocommerce_login', __( 'Please log in to your account to change this order.', 'wpheka-edit-orders-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
-		self::count_failed_key();
+		// Only a wrong key is a guess. No key at all is a page shown without one (the order
+		// tracking form, another customer's account page): don't count it against the visitor.
+		if ( '' !== $key ) {
+			self::count_failed_key();
+		}
 
 		return $not_found;
 	}

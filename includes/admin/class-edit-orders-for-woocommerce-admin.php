@@ -241,7 +241,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 
 		echo '<div class="wrap edit-orders-editor">';
 
-		if ( ! $order || ! current_user_can( self::CAPABILITY ) ) {
+		if ( ! $order instanceof WC_Order || $order instanceof WC_Order_Refund || Edit_Orders_For_WooCommerce_Balance_Orders::is_balance_order( $order ) || ! current_user_can( self::CAPABILITY ) ) {
 			echo '<h1>' . esc_html__( 'Edit order', 'wpheka-edit-orders-for-woocommerce' ) . '</h1><p>' . esc_html__( 'Order not found.', 'wpheka-edit-orders-for-woocommerce' ) . '</p></div>';
 			return;
 		}
@@ -432,7 +432,8 @@ class Edit_Orders_For_WooCommerce_Admin {
 			if ( ! $item instanceof WC_Order_Item_Product ) {
 				continue;
 			}
-			$qty       = isset( $fields['qty'] ) ? absint( $fields['qty'] ) : (int) $item->get_quantity();
+			// An emptied quantity box means "unchanged", not "remove": 0 removes.
+			$qty       = isset( $fields['qty'] ) && '' !== trim( (string) $fields['qty'] ) ? absint( $fields['qty'] ) : (int) $item->get_quantity();
 			$variation = isset( $fields['variation'] ) ? absint( $fields['variation'] ) : (int) $item->get_variation_id();
 
 			if ( 0 === $qty ) {
@@ -655,7 +656,8 @@ class Edit_Orders_For_WooCommerce_Admin {
 		}
 
 		$order = isset( $_POST['order_id'] ) ? wc_get_order( absint( wp_unslash( $_POST['order_id'] ) ) ) : null;
-		if ( ! $order ) {
+		// Only an original order: a refund's ID or a balance order's ID is not something to edit.
+		if ( ! $order instanceof WC_Order || $order instanceof WC_Order_Refund || Edit_Orders_For_WooCommerce_Balance_Orders::is_balance_order( $order ) ) {
 			wp_send_json_error( array( 'message' => __( 'Order not found.', 'wpheka-edit-orders-for-woocommerce' ) ), 404 );
 		}
 
