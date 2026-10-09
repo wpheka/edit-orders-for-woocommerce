@@ -76,7 +76,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 			'editOrdersForWooCommerceFront',
 			array(
 				'states' => WC()->countries->get_states(),
-				'closed' => __( 'The time for changes has passed.', 'wpheka-edit-orders-for-woocommerce' ),
+				'closed' => __( 'The time for changes has passed.', 'edit-orders-for-woocommerce' ),
 			)
 		);
 	}
@@ -93,7 +93,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		$nonce = isset( $_POST['_eofw_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_eofw_nonce'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 		if ( ! wp_verify_nonce( $nonce, self::NONCE ) ) {
-			self::$state = self::error( __( 'This page has expired. Reload it and try again.', 'wpheka-edit-orders-for-woocommerce' ) );
+			self::$state = self::error( __( 'This page has expired. Reload it and try again.', 'edit-orders-for-woocommerce' ) );
 			return;
 		}
 
@@ -102,7 +102,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		if ( Edit_Orders_For_WooCommerce_Customer_Rules::is_rate_limited() ) {
 			status_header( 429 );
 			nocache_headers();
-			wp_die( esc_html__( 'Too many attempts. Please try again later.', 'wpheka-edit-orders-for-woocommerce' ), '', array( 'response' => 429 ) );
+			wp_die( esc_html__( 'Too many attempts. Please try again later.', 'edit-orders-for-woocommerce' ), '', array( 'response' => 429 ) );
 		}
 
 		$order = wc_get_order( isset( $data['order_id'] ) ? absint( $data['order_id'] ) : 0 );
@@ -113,7 +113,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 			$args   = array( 'response' => $status );
 			if ( 'edit_orders_for_woocommerce_confirm_email' === $actor->get_error_code() ) {
 				$args['link_url']  = $order->get_checkout_order_received_url();
-				$args['link_text'] = __( 'Open your order', 'wpheka-edit-orders-for-woocommerce' );
+				$args['link_text'] = __( 'Open your order', 'edit-orders-for-woocommerce' );
 			}
 			status_header( $status );
 			nocache_headers();
@@ -150,7 +150,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		$action = isset( $data['edit_orders_for_woocommerce_action'] ) ? sanitize_key( $data['edit_orders_for_woocommerce_action'] ) : '';
 
 		if ( ! Edit_Orders_For_WooCommerce_Customer_Rules::count_action( $order ) ) {
-			return self::error( __( 'Too many changes in a short time. Please try again later.', 'wpheka-edit-orders-for-woocommerce' ), $action );
+			return self::error( __( 'Too many changes in a short time. Please try again later.', 'edit-orders-for-woocommerce' ), $action );
 		}
 
 		$allowed = Edit_Orders_For_WooCommerce_Customer_Rules::can( $order, $action, $actor );
@@ -161,7 +161,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		switch ( $action ) {
 			case 'close':
 				$order->update_meta_data( Edit_Orders_For_WooCommerce_Customer_Rules::WINDOW_CLOSED_META, time() );
-				$order->add_order_note( __( 'The customer confirmed the order as it is; changes are closed.', 'wpheka-edit-orders-for-woocommerce' ) );
+				$order->add_order_note( __( 'The customer confirmed the order as it is; changes are closed.', 'edit-orders-for-woocommerce' ) );
 				$order->save();
 				Edit_Orders_For_WooCommerce_Audit_Log::add(
 					array(
@@ -178,7 +178,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 				 * @param WC_Order $order Order.
 				 */
 				do_action( 'edit_orders_for_woocommerce_window_closed', $order );
-				return self::success( __( 'Thank you. Your order is confirmed as it is.', 'wpheka-edit-orders-for-woocommerce' ), $action );
+				return self::success( __( 'Thank you. Your order is confirmed as it is.', 'edit-orders-for-woocommerce' ), $action );
 
 			case 'note':
 				return self::change_note( $order, $data, $actor );
@@ -199,8 +199,8 @@ class Edit_Orders_For_WooCommerce_Frontend {
 				}
 				return self::success(
 					'requested' === $result['status']
-						? __( 'Your cancellation request has been sent. We will email you when the store has answered.', 'wpheka-edit-orders-for-woocommerce' )
-						: __( 'Your order is cancelled. We have emailed you the details.', 'wpheka-edit-orders-for-woocommerce' ),
+						? __( 'Your cancellation request has been sent. We will email you when the store has answered.', 'edit-orders-for-woocommerce' )
+						: __( 'Your order is cancelled. We have emailed you the details.', 'edit-orders-for-woocommerce' ),
 					$action
 				);
 
@@ -209,7 +209,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 				return self::change_order( $order, $data, $actor, $action );
 		}
 
-		return self::error( __( 'Unknown request.', 'wpheka-edit-orders-for-woocommerce' ), $action );
+		return self::error( __( 'Unknown request.', 'edit-orders-for-woocommerce' ), $action );
 	}
 
 	/**
@@ -224,7 +224,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 	private static function change_order( WC_Order $order, array $data, $actor, $action ) {
 		$changes = 'address' === $action ? self::address_changes( $order, $data ) : self::swap_changes( $order, $data );
 		if ( ! $changes ) {
-			return self::error( __( 'Nothing was changed.', 'wpheka-edit-orders-for-woocommerce' ), $action );
+			return self::error( __( 'Nothing was changed.', 'edit-orders-for-woocommerce' ), $action );
 		}
 
 		$confirm = isset( $data['step'] ) && 'confirm' === $data['step'];
@@ -297,12 +297,12 @@ class Edit_Orders_For_WooCommerce_Frontend {
 
 		if ( 'balance_due' === $result['status'] && $balance ) {
 			// The customer is here: take them straight to paying the difference.
-			$out             = self::success( __( 'Pay the difference to complete your change.', 'wpheka-edit-orders-for-woocommerce' ), $action );
+			$out             = self::success( __( 'Pay the difference to complete your change.', 'edit-orders-for-woocommerce' ), $action );
 			$out['redirect'] = $balance->get_checkout_payment_url();
 			return $out;
 		}
 
-		return self::success( __( 'Your order has been updated. We have emailed you the details.', 'wpheka-edit-orders-for-woocommerce' ), $action );
+		return self::success( __( 'Your order has been updated. We have emailed you the details.', 'edit-orders-for-woocommerce' ), $action );
 	}
 
 	/**
@@ -320,12 +320,12 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		$old  = $order->get_customer_note();
 
 		if ( $note === $old ) {
-			return self::error( __( 'Nothing was changed.', 'wpheka-edit-orders-for-woocommerce' ), 'note' );
+			return self::error( __( 'Nothing was changed.', 'edit-orders-for-woocommerce' ), 'note' );
 		}
 
 		$order->set_customer_note( $note );
 		/* translators: 1: old note, 2: new note. */
-		$order->add_order_note( sprintf( __( 'The customer changed the order note from "%1$s" to "%2$s".', 'wpheka-edit-orders-for-woocommerce' ), $old, $note ) );
+		$order->add_order_note( sprintf( __( 'The customer changed the order note from "%1$s" to "%2$s".', 'edit-orders-for-woocommerce' ), $old, $note ) );
 		$order->save();
 
 		Edit_Orders_For_WooCommerce_Audit_Log::add(
@@ -343,12 +343,12 @@ class Edit_Orders_For_WooCommerce_Frontend {
 			'edit_orders_for_woocommerce_customer_changed',
 			$order,
 			array(
-				'changes'     => array( __( 'Order note changed.', 'wpheka-edit-orders-for-woocommerce' ) ),
+				'changes'     => array( __( 'Order note changed.', 'edit-orders-for-woocommerce' ) ),
 				'balance_due' => 0,
 			)
 		);
 
-		return self::success( __( 'Your order note has been updated.', 'wpheka-edit-orders-for-woocommerce' ), 'note' );
+		return self::success( __( 'Your order note has been updated.', 'edit-orders-for-woocommerce' ), 'note' );
 	}
 
 	/**
@@ -566,7 +566,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 			if ( true === Edit_Orders_For_WooCommerce_Customer_Rules::can( $order, $action ) ) {
 				$actions['edit_order'] = array(
 					'url'  => $order->get_view_order_url() . '#edit-order',
-					'name' => __( 'Change or cancel', 'wpheka-edit-orders-for-woocommerce' ),
+					'name' => __( 'Change or cancel', 'edit-orders-for-woocommerce' ),
 				);
 				break;
 			}
@@ -602,7 +602,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		$url  = self::panel_url( $order );
 		$text = sprintf(
 			/* translators: %s: date and time the window closes. */
-			__( 'Need to change or cancel this order? You can do it until %s.', 'wpheka-edit-orders-for-woocommerce' ),
+			__( 'Need to change or cancel this order? You can do it until %s.', 'edit-orders-for-woocommerce' ),
 			wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), time() + Edit_Orders_For_WooCommerce_Customer_Rules::seconds_left( $order ) )
 		);
 
@@ -611,7 +611,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 			return;
 		}
 
-		echo '<p>' . esc_html( $text ) . ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Change or cancel your order', 'wpheka-edit-orders-for-woocommerce' ) . '</a></p>';
+		echo '<p>' . esc_html( $text ) . ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Change or cancel your order', 'edit-orders-for-woocommerce' ) . '</a></p>';
 	}
 
 	/**

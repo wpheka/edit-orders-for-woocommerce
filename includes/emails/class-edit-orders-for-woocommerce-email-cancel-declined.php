@@ -18,8 +18,8 @@ class Edit_Orders_For_WooCommerce_Email_Cancel_Declined extends Edit_Orders_For_
 	public function __construct() {
 		$this->id             = 'edit_orders_for_woocommerce_cancel_declined';
 		$this->customer_email = true;
-		$this->title          = __( 'Cancellation request declined', 'wpheka-edit-orders-for-woocommerce' );
-		$this->description    = __( 'Sent to the customer when the store declines their cancellation request. The order is not changed.', 'wpheka-edit-orders-for-woocommerce' );
+		$this->title          = __( 'Cancellation request declined', 'edit-orders-for-woocommerce' );
+		$this->description    = __( 'Sent to the customer when the store declines their cancellation request. The order is not changed.', 'edit-orders-for-woocommerce' );
 		$this->template_html  = 'emails/edit-orders-cancel-declined.php';
 		$this->template_plain = 'emails/plain/edit-orders-cancel-declined.php';
 
@@ -32,7 +32,7 @@ class Edit_Orders_For_WooCommerce_Email_Cancel_Declined extends Edit_Orders_For_
 	 * @return string
 	 */
 	public function get_default_subject() {
-		return __( 'About your request to cancel {site_title} order #{order_number}', 'wpheka-edit-orders-for-woocommerce' );
+		return __( 'About your request to cancel {site_title} order #{order_number}', 'edit-orders-for-woocommerce' );
 	}
 
 	/**
@@ -41,6 +41,6 @@ class Edit_Orders_For_WooCommerce_Email_Cancel_Declined extends Edit_Orders_For_
 	 * @return string
 	 */
 	public function get_default_heading() {
-		return __( 'We could not cancel your order', 'wpheka-edit-orders-for-woocommerce' );
+		return __( 'We could not cancel your order', 'edit-orders-for-woocommerce' );
 	}
 }

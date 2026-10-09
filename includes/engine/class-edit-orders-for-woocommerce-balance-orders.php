@@ -84,7 +84,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$balance = self::get_open_balance_order( $order );
 		if ( $balance ) {
 			/* translators: %s: original order status. */
-			$balance->update_status( 'cancelled', sprintf( __( 'The original order is now %s.', 'wpheka-edit-orders-for-woocommerce' ), wc_get_order_status_name( $order->get_status() ) ) );
+			$balance->update_status( 'cancelled', sprintf( __( 'The original order is now %s.', 'edit-orders-for-woocommerce' ), wc_get_order_status_name( $order->get_status() ) ) );
 		}
 
 		// Paid balance orders hold money for this order too. Cancelling or refunding it from
@@ -97,7 +97,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 					$order->add_order_note(
 						sprintf(
 							/* translators: 1: balance order number, 2: amount. */
-							__( 'Balance order #%1$s was paid for changes to this order and still holds %2$s. Refund it too if the customer is owed it.', 'wpheka-edit-orders-for-woocommerce' ),
+							__( 'Balance order #%1$s was paid for changes to this order and still holds %2$s. Refund it too if the customer is owed it.', 'edit-orders-for-woocommerce' ),
 							$paid->get_order_number(),
 							wc_price( $left, array( 'currency' => $paid->get_currency() ) )
 						)
@@ -160,7 +160,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 				$product = wc_get_product( $line['product_id'] );
 				if ( ! $product ) {
 					$balance->delete( true );
-					return new WP_Error( 'edit_orders_for_woocommerce_balance_product', __( 'A product on the balance order no longer exists.', 'wpheka-edit-orders-for-woocommerce' ) );
+					return new WP_Error( 'edit_orders_for_woocommerce_balance_product', __( 'A product on the balance order no longer exists.', 'edit-orders-for-woocommerce' ) );
 				}
 				$item = new WC_Order_Item_Product();
 				$item->set_product( $product );
@@ -192,7 +192,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$balance->update_meta_data( self::PLAN_META, $plan->to_array() );
 		$balance->add_order_note(
 			/* translators: %s: original order number. */
-			sprintf( __( 'Balance for changes to order #%s.', 'wpheka-edit-orders-for-woocommerce' ), $order->get_order_number() )
+			sprintf( __( 'Balance for changes to order #%s.', 'edit-orders-for-woocommerce' ), $order->get_order_number() )
 			. ' ' . implode( ' ', $plan->get_descriptions() )
 		);
 		$balance->save();
@@ -278,7 +278,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		// and flag the late payment for a refund.
 		$current = (int) $order->get_meta( self::OPEN_BALANCE_META ) === $balance->get_id();
 		$plan    = Edit_Orders_For_WooCommerce_Settlement_Plan::from_array( $data );
-		$result  = $current ? $plan->still_applies( $order ) : new WP_Error( 'edit_orders_for_woocommerce_balance_superseded', __( 'it was paid after being cancelled', 'wpheka-edit-orders-for-woocommerce' ) );
+		$result  = $current ? $plan->still_applies( $order ) : new WP_Error( 'edit_orders_for_woocommerce_balance_superseded', __( 'it was paid after being cancelled', 'edit-orders-for-woocommerce' ) );
 		if ( true === $result ) {
 			$result = Edit_Orders_For_WooCommerce_Settlement_Executor::run( $order, $plan, $balance );
 		}
@@ -291,7 +291,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 			$order->add_order_note(
 				sprintf(
 					/* translators: 1: balance order number, 2: reason. */
-					__( 'Balance order #%1$s was paid, but the changes were not applied: %2$s. Refund the balance order or make the change by hand.', 'wpheka-edit-orders-for-woocommerce' ),
+					__( 'Balance order #%1$s was paid, but the changes were not applied: %2$s. Refund the balance order or make the change by hand.', 'edit-orders-for-woocommerce' ),
 					$balance->get_order_number(),
 					$result->get_error_message()
 				)
@@ -299,7 +299,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		} else {
 			$order->add_order_note(
 				/* translators: %s: balance order number. */
-				sprintf( __( 'Balance order #%s paid; changes applied.', 'wpheka-edit-orders-for-woocommerce' ), $balance->get_order_number() )
+				sprintf( __( 'Balance order #%s paid; changes applied.', 'edit-orders-for-woocommerce' ), $balance->get_order_number() )
 			);
 		}
 		$order->save();
@@ -312,7 +312,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 				0,
 				'',
 				/* translators: %s: reason. */
-				sprintf( __( 'The customer paid this balance order, but the changes it paid for could not be applied: %s. Nothing has been refunded yet.', 'wpheka-edit-orders-for-woocommerce' ), $result->get_error_message() )
+				sprintf( __( 'The customer paid this balance order, but the changes it paid for could not be applied: %s. Nothing has been refunded yet.', 'edit-orders-for-woocommerce' ), $result->get_error_message() )
 			);
 		}
 
@@ -345,7 +345,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		if ( $order && (int) $order->get_meta( self::OPEN_BALANCE_META ) === $balance->get_id() ) {
 			$order->delete_meta_data( self::OPEN_BALANCE_META );
 			/* translators: %s: balance order number. */
-			$order->add_order_note( sprintf( __( 'Balance order #%s cancelled; the requested changes were not applied.', 'wpheka-edit-orders-for-woocommerce' ), $balance->get_order_number() ) );
+			$order->add_order_note( sprintf( __( 'Balance order #%s cancelled; the requested changes were not applied.', 'edit-orders-for-woocommerce' ), $balance->get_order_number() ) );
 			$order->save();
 		}
 	}

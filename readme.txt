@@ -1,5 +1,5 @@
-=== WPHEKA Edit Orders for WooCommerce ===
-Contributors: wpheka, akshayaswaroop
+=== Edit Orders for WooCommerce ===
+Contributors: wpheka
 Tags: edit order, change order, cancel order, order editing, woocommerce
 Requires at least: 6.6
 Tested up to: 7.1
@@ -14,7 +14,7 @@ Edit WooCommerce orders after payment and settle the difference correctly. Custo
 
 WooCommerce locks an order once it is paid. Changing a size, adding an item or fixing an address then means cancelling, refunding by hand, working out tax and shipping, and sending a new invoice.
 
-**WPHEKA Edit Orders for WooCommerce** lets you edit a paid order in a few clicks, and it handles the money for you:
+**Edit Orders for WooCommerce** lets you edit a paid order in a few clicks, and it handles the money for you:
 
 * **Order costs less?** It refunds the difference through your payment gateway, with the items put back in stock.
 * **Order costs more?** It creates a small linked order for the difference and emails your customer a link to pay it. The change is made when it is paid; until then the order ships as it was.
@@ -63,7 +63,7 @@ Seven WooCommerce emails, which you can turn on or off and reword in WooCommerce
 == Installation ==
 
 1. Install and activate WooCommerce.
-2. Install "WPHEKA Edit Orders for WooCommerce" from Plugins > Add New, or upload the zip, then activate it.
+2. Install "Edit Orders for WooCommerce" from Plugins > Add New, or upload the zip, then activate it.
 3. Go to WooCommerce > Settings > Edit Orders to choose what customers may change and for how long.
 4. Open any paid Processing or On hold order and use **Edit items or address** in the "Edit order" box.
 

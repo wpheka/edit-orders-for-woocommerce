@@ -24,16 +24,16 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 	<?php
 	printf(
 		/* translators: %s: order number. */
-		esc_html__( 'The customer asked to cancel order #%s.', 'wpheka-edit-orders-for-woocommerce' ),
+		esc_html__( 'The customer asked to cancel order #%s.', 'edit-orders-for-woocommerce' ),
 		esc_html( $order->get_order_number() )
 	);
 	?>
 </p>
 <?php if ( ! empty( $data['reason'] ) ) : ?>
 	<?php /* translators: %s: reason. */ ?>
-	<p><?php printf( esc_html__( 'Reason: %s', 'wpheka-edit-orders-for-woocommerce' ), esc_html( $data['reason'] ) ); ?></p>
+	<p><?php printf( esc_html__( 'Reason: %s', 'edit-orders-for-woocommerce' ), esc_html( $data['reason'] ) ); ?></p>
 <?php endif; ?>
-<p><a class="link" href="<?php echo esc_url( admin_url( 'admin.php?page=edit-orders-for-woocommerce' ) ); ?>"><?php esc_html_e( 'Approve or decline the request', 'wpheka-edit-orders-for-woocommerce' ); ?></a></p>
+<p><a class="link" href="<?php echo esc_url( admin_url( 'admin.php?page=edit-orders-for-woocommerce' ) ); ?>"><?php esc_html_e( 'Approve or decline the request', 'edit-orders-for-woocommerce' ); ?></a></p>
 <?php do_action( 'woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email ); ?>
 
 <?php

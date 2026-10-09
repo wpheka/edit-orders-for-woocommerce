@@ -21,8 +21,8 @@ defined( 'ABSPATH' ) || exit;
 echo '= ' . esc_html( wp_strip_all_tags( $email_heading ) ) . " =\n\n";
 
 /* translators: %s: customer first name. */
-echo esc_html( sprintf( __( 'Hi %s,', 'wpheka-edit-orders-for-woocommerce' ), $order->get_billing_first_name() ) ) . "\n\n";
-echo esc_html__( 'We have updated your order. Here is what changed:', 'wpheka-edit-orders-for-woocommerce' ) . "\n\n";
+echo esc_html( sprintf( __( 'Hi %s,', 'edit-orders-for-woocommerce' ), $order->get_billing_first_name() ) ) . "\n\n";
+echo esc_html__( 'We have updated your order. Here is what changed:', 'edit-orders-for-woocommerce' ) . "\n\n";
 
 foreach ( (array) ( isset( $summary['changes'] ) ? $summary['changes'] : array() ) as $edit_orders_for_woocommerce_change ) {
 	echo '- ' . esc_html( $edit_orders_for_woocommerce_change ) . "\n";
@@ -31,20 +31,20 @@ echo "\n";
 
 if ( ! empty( $summary['balance_order'] ) ) {
 	/* translators: %s: balance order number. */
-	echo esc_html( sprintf( __( 'Thank you for paying the difference (order #%s).', 'wpheka-edit-orders-for-woocommerce' ), $summary['balance_order'] ) ) . "\n\n";
+	echo esc_html( sprintf( __( 'Thank you for paying the difference (order #%s).', 'edit-orders-for-woocommerce' ), $summary['balance_order'] ) ) . "\n\n";
 }
 
 if ( ! empty( $summary['refund'] ) && (float) $summary['refund'] > 0 ) {
 	$edit_orders_for_woocommerce_amount = wp_strip_all_tags( wc_price( $summary['refund'], array( 'currency' => $order->get_currency() ) ) );
 	if ( ! empty( $summary['on_delivery'] ) ) {
 		/* translators: %s: amount. */
-		$edit_orders_for_woocommerce_line = sprintf( __( 'You will pay %s less on delivery.', 'wpheka-edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount );
+		$edit_orders_for_woocommerce_line = sprintf( __( 'You will pay %s less on delivery.', 'edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount );
 	} elseif ( ! empty( $summary['refund_manual'] ) ) {
 		/* translators: %s: amount. */
-		$edit_orders_for_woocommerce_line = sprintf( __( 'We will refund %s to you and let you know when it is done.', 'wpheka-edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount );
+		$edit_orders_for_woocommerce_line = sprintf( __( 'We will refund %s to you and let you know when it is done.', 'edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount );
 	} else {
 		/* translators: %s: amount. */
-		$edit_orders_for_woocommerce_line = sprintf( __( 'We have refunded %s to your original payment method.', 'wpheka-edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount );
+		$edit_orders_for_woocommerce_line = sprintf( __( 'We have refunded %s to your original payment method.', 'edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount );
 	}
 	echo esc_html( html_entity_decode( $edit_orders_for_woocommerce_line ) ) . "\n\n";
 }

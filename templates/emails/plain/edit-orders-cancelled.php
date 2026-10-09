@@ -21,15 +21,15 @@ defined( 'ABSPATH' ) || exit;
 echo '= ' . esc_html( wp_strip_all_tags( $email_heading ) ) . " =\n\n";
 
 /* translators: %s: customer first name. */
-echo esc_html( sprintf( __( 'Hi %s,', 'wpheka-edit-orders-for-woocommerce' ), $order->get_billing_first_name() ) ) . "\n\n";
+echo esc_html( sprintf( __( 'Hi %s,', 'edit-orders-for-woocommerce' ), $order->get_billing_first_name() ) ) . "\n\n";
 /* translators: %s: order number. */
-echo esc_html( sprintf( __( 'As you asked, we have cancelled order #%s.', 'wpheka-edit-orders-for-woocommerce' ), $order->get_order_number() ) ) . "\n\n";
+echo esc_html( sprintf( __( 'As you asked, we have cancelled order #%s.', 'edit-orders-for-woocommerce' ), $order->get_order_number() ) ) . "\n\n";
 if ( ! empty( $data['on_delivery'] ) ) {
-	echo esc_html__( 'Nothing was charged, so there is nothing to refund.', 'wpheka-edit-orders-for-woocommerce' ) . "\n\n";
+	echo esc_html__( 'Nothing was charged, so there is nothing to refund.', 'edit-orders-for-woocommerce' ) . "\n\n";
 } elseif ( ! empty( $data['amount'] ) ) {
 	$edit_orders_for_woocommerce_amount = wp_strip_all_tags( wc_price( $data['amount'], array( 'currency' => $order->get_currency() ) ) );
 	/* translators: %s: amount. */
-	$edit_orders_for_woocommerce_line = ! empty( $data['manual'] ) ? sprintf( __( 'We will refund %s to you and let you know when it is done.', 'wpheka-edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount ) : sprintf( __( 'We have refunded %s to your original payment method.', 'wpheka-edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount ); // phpcs:ignore WordPress.WP.I18n.MissingTranslatorsComment -- comment above applies to both.
+	$edit_orders_for_woocommerce_line = ! empty( $data['manual'] ) ? sprintf( __( 'We will refund %s to you and let you know when it is done.', 'edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount ) : sprintf( __( 'We have refunded %s to your original payment method.', 'edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_amount ); // phpcs:ignore WordPress.WP.I18n.MissingTranslatorsComment -- comment above applies to both.
 	echo esc_html( html_entity_decode( $edit_orders_for_woocommerce_line ) ) . "\n\n";
 }
 

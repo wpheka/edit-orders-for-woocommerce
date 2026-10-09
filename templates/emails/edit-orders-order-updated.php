@@ -21,8 +21,8 @@ defined( 'ABSPATH' ) || exit;
 do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
 <?php /* translators: %s: customer first name. */ ?>
-<p><?php printf( esc_html__( 'Hi %s,', 'wpheka-edit-orders-for-woocommerce' ), esc_html( $order->get_billing_first_name() ) ); ?></p>
-<p><?php esc_html_e( 'We have updated your order. Here is what changed:', 'wpheka-edit-orders-for-woocommerce' ); ?></p>
+<p><?php printf( esc_html__( 'Hi %s,', 'edit-orders-for-woocommerce' ), esc_html( $order->get_billing_first_name() ) ); ?></p>
+<p><?php esc_html_e( 'We have updated your order. Here is what changed:', 'edit-orders-for-woocommerce' ); ?></p>
 
 <?php if ( ! empty( $summary['changes'] ) ) : ?>
 	<ul>
@@ -34,19 +34,19 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
 <?php if ( ! empty( $summary['balance_order'] ) ) : ?>
 	<?php /* translators: %s: balance order number. */ ?>
-	<p><?php printf( esc_html__( 'Thank you for paying the difference (order #%s).', 'wpheka-edit-orders-for-woocommerce' ), esc_html( $summary['balance_order'] ) ); ?></p>
+	<p><?php printf( esc_html__( 'Thank you for paying the difference (order #%s).', 'edit-orders-for-woocommerce' ), esc_html( $summary['balance_order'] ) ); ?></p>
 <?php endif; ?>
 
 <?php if ( ! empty( $summary['refund'] ) && (float) $summary['refund'] > 0 ) : ?>
 	<?php if ( ! empty( $summary['on_delivery'] ) ) : ?>
 		<?php /* translators: %s: amount. */ ?>
-		<p><?php printf( esc_html__( 'You will pay %s less on delivery.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $summary['refund'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
+		<p><?php printf( esc_html__( 'You will pay %s less on delivery.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $summary['refund'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
 	<?php elseif ( ! empty( $summary['refund_manual'] ) ) : ?>
 		<?php /* translators: %s: amount. */ ?>
-		<p><?php printf( esc_html__( 'We will refund %s to you and let you know when it is done.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $summary['refund'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
+		<p><?php printf( esc_html__( 'We will refund %s to you and let you know when it is done.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $summary['refund'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
 	<?php else : ?>
 		<?php /* translators: %s: amount. */ ?>
-		<p><?php printf( esc_html__( 'We have refunded %s to your original payment method.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $summary['refund'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
+		<p><?php printf( esc_html__( 'We have refunded %s to your original payment method.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $summary['refund'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
 	<?php endif; ?>
 <?php endif; ?>
 

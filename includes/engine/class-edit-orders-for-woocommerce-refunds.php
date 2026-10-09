@@ -93,7 +93,7 @@ class Edit_Orders_For_WooCommerce_Refunds {
 			$collect = (float) $order->get_total() - (float) $order->get_total_refunded();
 			$order->add_order_note(
 				/* translators: %s: amount. */
-				sprintf( __( 'Amount to collect on delivery is now %s.', 'wpheka-edit-orders-for-woocommerce' ), wc_price( $collect, array( 'currency' => $order->get_currency() ) ) )
+				sprintf( __( 'Amount to collect on delivery is now %s.', 'edit-orders-for-woocommerce' ), wc_price( $collect, array( 'currency' => $order->get_currency() ) ) )
 			);
 		}
 
@@ -121,13 +121,13 @@ class Edit_Orders_For_WooCommerce_Refunds {
 
 		if ( '' !== $reason ) {
 			/* translators: 1: amount, 2: reason. */
-			$note = sprintf( __( 'Manual refund needed: %1$s. %2$s', 'wpheka-edit-orders-for-woocommerce' ), $money, $reason );
+			$note = sprintf( __( 'Manual refund needed: %1$s. %2$s', 'edit-orders-for-woocommerce' ), $money, $reason );
 		} elseif ( '' !== $gateway_error ) {
 			/* translators: 1: amount, 2: gateway error. */
-			$note = sprintf( __( 'Manual refund needed: %1$s. The payment gateway refused the refund: %2$s', 'wpheka-edit-orders-for-woocommerce' ), $money, $gateway_error );
+			$note = sprintf( __( 'Manual refund needed: %1$s. The payment gateway refused the refund: %2$s', 'edit-orders-for-woocommerce' ), $money, $gateway_error );
 		} else {
 			/* translators: %s: amount. */
-			$note = sprintf( __( 'Manual refund needed: %s. This payment method cannot refund automatically.', 'wpheka-edit-orders-for-woocommerce' ), $money );
+			$note = sprintf( __( 'Manual refund needed: %s. This payment method cannot refund automatically.', 'edit-orders-for-woocommerce' ), $money );
 		}
 
 		$order->update_meta_data( self::MANUAL_REFUND_META, wc_format_decimal( $total, wc_get_price_decimals() ) );

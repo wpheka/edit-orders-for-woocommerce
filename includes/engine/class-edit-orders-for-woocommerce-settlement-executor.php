@@ -40,7 +40,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 		}
 
 		if ( ! $plan->has_changes() ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_no_changes', __( 'Nothing to change.', 'wpheka-edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_no_changes', __( 'Nothing to change.', 'edit-orders-for-woocommerce' ) );
 		}
 
 		return $plan;
@@ -62,7 +62,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 		// not both pass the checks before either refund exists.
 		$guard = 'apply_' . $order->get_id();
 		if ( ! Edit_Orders_For_WooCommerce_Lock::claim( $guard ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_busy', __( 'This order is being changed right now. Reload the page and try again.', 'wpheka-edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_busy', __( 'This order is being changed right now. Reload the page and try again.', 'edit-orders-for-woocommerce' ) );
 		}
 
 		$result = self::apply_claimed( wc_get_order( $order->get_id() ), $changes, $actor, $args );
@@ -88,7 +88,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 		}
 
 		if ( ! empty( $args['expect'] ) && ! hash_equals( $plan->fingerprint(), (string) $args['expect'] ) ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_changed', __( 'The order or prices changed since the preview. Please review the change again.', 'wpheka-edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_changed', __( 'The order or prices changed since the preview. Please review the change again.', 'edit-orders-for-woocommerce' ) );
 		}
 
 		/**
@@ -118,7 +118,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 				$order->add_order_note(
 					sprintf(
 						/* translators: 1: amount, 2: linked order number. */
-						__( 'Collect %1$s more on delivery, on linked order #%2$s.', 'wpheka-edit-orders-for-woocommerce' ),
+						__( 'Collect %1$s more on delivery, on linked order #%2$s.', 'edit-orders-for-woocommerce' ),
 						wc_price( $balance->get_total(), array( 'currency' => $balance->get_currency() ) ),
 						$balance->get_order_number()
 					)
@@ -127,7 +127,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 				// The gateways' filters keep a cash on delivery order without a paid date when it
 				// goes to Processing; make sure they are loaded in this request.
 				WC()->payment_gateways();
-				$balance->update_status( 'processing', __( 'Payment to be made upon delivery, with the original order.', 'wpheka-edit-orders-for-woocommerce' ) );
+				$balance->update_status( 'processing', __( 'Payment to be made upon delivery, with the original order.', 'edit-orders-for-woocommerce' ) );
 
 				$result = array(
 					'status'           => 'collect_on_delivery',
@@ -149,7 +149,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 				$order->add_order_note(
 					sprintf(
 						/* translators: 1: balance order number, 2: amount, 3: changes. */
-						__( 'Changes waiting for payment of balance order #%1$s (%2$s). They apply when it is paid: %3$s', 'wpheka-edit-orders-for-woocommerce' ),
+						__( 'Changes waiting for payment of balance order #%1$s (%2$s). They apply when it is paid: %3$s', 'edit-orders-for-woocommerce' ),
 						$balance->get_order_number(),
 						wc_price( $balance->get_total(), array( 'currency' => $balance->get_currency() ) ),
 						implode( ' ', $plan->get_descriptions() )
@@ -212,14 +212,14 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 				$order,
 				$plan->get_refund_lines(),
 				$plan->get_refund_amount(),
-				__( 'Order edited', 'wpheka-edit-orders-for-woocommerce' )
+				__( 'Order edited', 'edit-orders-for-woocommerce' )
 			);
 			remove_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
 
 			if ( is_wp_error( $refund ) ) {
 				$order->add_order_note(
 					/* translators: %s: error message. */
-					sprintf( __( 'Order edit not applied: the refund could not be recorded (%s).', 'wpheka-edit-orders-for-woocommerce' ), $refund->get_error_message() )
+					sprintf( __( 'Order edit not applied: the refund could not be recorded (%s).', 'edit-orders-for-woocommerce' ), $refund->get_error_message() )
 				);
 				return $refund;
 			}
@@ -276,8 +276,8 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 		$order->add_order_note(
 			( $balance
 				/* translators: %s: balance order number. */
-				? sprintf( __( 'Order edited (paid through balance order #%s):', 'wpheka-edit-orders-for-woocommerce' ), $balance->get_order_number() )
-				: __( 'Order edited:', 'wpheka-edit-orders-for-woocommerce' ) )
+				? sprintf( __( 'Order edited (paid through balance order #%s):', 'edit-orders-for-woocommerce' ), $balance->get_order_number() )
+				: __( 'Order edited:', 'edit-orders-for-woocommerce' ) )
 			. ' ' . implode( ' ', $notes )
 		);
 		$order->save();

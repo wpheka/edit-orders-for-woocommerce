@@ -23,13 +23,13 @@ defined( 'ABSPATH' ) || exit;
 echo '= ' . esc_html( wp_strip_all_tags( $email_heading ) ) . " =\n\n";
 
 /* translators: %s: customer first name. */
-echo esc_html( sprintf( __( 'Hi %s,', 'wpheka-edit-orders-for-woocommerce' ), $order->get_billing_first_name() ) ) . "\n\n";
+echo esc_html( sprintf( __( 'Hi %s,', 'edit-orders-for-woocommerce' ), $order->get_billing_first_name() ) ) . "\n\n";
 
 echo esc_html(
 	html_entity_decode(
 		sprintf(
 			/* translators: 1: original order number, 2: amount. */
-			__( 'The change to your order #%1$s costs %2$s more. It will be made as soon as you pay the difference:', 'wpheka-edit-orders-for-woocommerce' ),
+			__( 'The change to your order #%1$s costs %2$s more. It will be made as soon as you pay the difference:', 'edit-orders-for-woocommerce' ),
 			$original_order ? $original_order->get_order_number() : '',
 			wp_strip_all_tags( wc_price( $order->get_total(), array( 'currency' => $order->get_currency() ) ) )
 		)
@@ -40,8 +40,8 @@ foreach ( $changes as $edit_orders_for_woocommerce_change ) {
 	echo '- ' . esc_html( $edit_orders_for_woocommerce_change ) . "\n";
 }
 
-echo "\n" . esc_html__( 'Pay the difference:', 'wpheka-edit-orders-for-woocommerce' ) . ' ' . esc_url_raw( $pay_url ) . "\n\n";
-echo esc_html__( 'Until it is paid, your order stays as you first placed it.', 'wpheka-edit-orders-for-woocommerce' ) . "\n\n";
+echo "\n" . esc_html__( 'Pay the difference:', 'edit-orders-for-woocommerce' ) . ' ' . esc_url_raw( $pay_url ) . "\n\n";
+echo esc_html__( 'Until it is paid, your order stays as you first placed it.', 'edit-orders-for-woocommerce' ) . "\n\n";
 
 do_action( 'woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email );
 

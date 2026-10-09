@@ -21,17 +21,17 @@ defined( 'ABSPATH' ) || exit;
 do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
 <?php /* translators: %s: customer first name. */ ?>
-<p><?php printf( esc_html__( 'Hi %s,', 'wpheka-edit-orders-for-woocommerce' ), esc_html( $order->get_billing_first_name() ) ); ?></p>
+<p><?php printf( esc_html__( 'Hi %s,', 'edit-orders-for-woocommerce' ), esc_html( $order->get_billing_first_name() ) ); ?></p>
 <?php /* translators: %s: order number. */ ?>
-<p><?php printf( esc_html__( 'As you asked, we have cancelled order #%s.', 'wpheka-edit-orders-for-woocommerce' ), esc_html( $order->get_order_number() ) ); ?></p>
+<p><?php printf( esc_html__( 'As you asked, we have cancelled order #%s.', 'edit-orders-for-woocommerce' ), esc_html( $order->get_order_number() ) ); ?></p>
 <?php if ( ! empty( $data['on_delivery'] ) ) : ?>
-	<p><?php esc_html_e( 'Nothing was charged, so there is nothing to refund.', 'wpheka-edit-orders-for-woocommerce' ); ?></p>
+	<p><?php esc_html_e( 'Nothing was charged, so there is nothing to refund.', 'edit-orders-for-woocommerce' ); ?></p>
 <?php elseif ( ! empty( $data['amount'] ) && ! empty( $data['manual'] ) ) : ?>
 	<?php /* translators: %s: amount. */ ?>
-	<p><?php printf( esc_html__( 'We will refund %s to you and let you know when it is done.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $data['amount'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
+	<p><?php printf( esc_html__( 'We will refund %s to you and let you know when it is done.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $data['amount'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
 <?php elseif ( ! empty( $data['amount'] ) ) : ?>
 	<?php /* translators: %s: amount. */ ?>
-	<p><?php printf( esc_html__( 'We have refunded %s to your original payment method.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $data['amount'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
+	<p><?php printf( esc_html__( 'We have refunded %s to your original payment method.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $data['amount'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
 <?php endif; ?>
 
 <?php

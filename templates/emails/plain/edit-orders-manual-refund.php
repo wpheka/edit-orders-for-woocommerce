@@ -24,10 +24,10 @@ echo esc_html(
 	html_entity_decode(
 		sprintf(
 			/* translators: 1: amount, 2: order number, 3: payment method. */
-			__( 'An edit to order #%2$s needs a refund of %1$s that %3$s could not make automatically. Please refund the customer by hand.', 'wpheka-edit-orders-for-woocommerce' ),
+			__( 'An edit to order #%2$s needs a refund of %1$s that %3$s could not make automatically. Please refund the customer by hand.', 'edit-orders-for-woocommerce' ),
 			wp_strip_all_tags( wc_price( isset( $details['amount'] ) ? $details['amount'] : 0, array( 'currency' => $order->get_currency() ) ) ),
 			$order->get_order_number(),
-			$order->get_payment_method_title() ? $order->get_payment_method_title() : __( 'the payment method', 'wpheka-edit-orders-for-woocommerce' )
+			$order->get_payment_method_title() ? $order->get_payment_method_title() : __( 'the payment method', 'edit-orders-for-woocommerce' )
 		)
 	)
 ) . "\n\n";
@@ -37,10 +37,10 @@ if ( ! empty( $details['reason'] ) ) {
 } else {
 	if ( ! empty( $details['gateway_error'] ) ) {
 		/* translators: %s: error from the payment gateway. */
-		echo esc_html( sprintf( __( 'The payment gateway said: %s', 'wpheka-edit-orders-for-woocommerce' ), $details['gateway_error'] ) ) . "\n\n";
+		echo esc_html( sprintf( __( 'The payment gateway said: %s', 'edit-orders-for-woocommerce' ), $details['gateway_error'] ) ) . "\n\n";
 	}
 
-	echo esc_html__( 'The refund is already recorded on the order, with stock restored. Only the money still has to be sent.', 'wpheka-edit-orders-for-woocommerce' ) . "\n\n";
+	echo esc_html__( 'The refund is already recorded on the order, with stock restored. Only the money still has to be sent.', 'edit-orders-for-woocommerce' ) . "\n\n";
 }
 echo esc_url_raw( $order->get_edit_order_url() ) . "\n\n";
 

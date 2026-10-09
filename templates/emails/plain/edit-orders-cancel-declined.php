@@ -21,13 +21,13 @@ defined( 'ABSPATH' ) || exit;
 echo '= ' . esc_html( wp_strip_all_tags( $email_heading ) ) . " =\n\n";
 
 /* translators: %s: customer first name. */
-echo esc_html( sprintf( __( 'Hi %s,', 'wpheka-edit-orders-for-woocommerce' ), $order->get_billing_first_name() ) ) . "\n\n";
+echo esc_html( sprintf( __( 'Hi %s,', 'edit-orders-for-woocommerce' ), $order->get_billing_first_name() ) ) . "\n\n";
 /* translators: %s: order number. */
-echo esc_html( sprintf( __( 'We could not cancel order #%s. It goes ahead as placed.', 'wpheka-edit-orders-for-woocommerce' ), $order->get_order_number() ) ) . "\n\n";
+echo esc_html( sprintf( __( 'We could not cancel order #%s. It goes ahead as placed.', 'edit-orders-for-woocommerce' ), $order->get_order_number() ) ) . "\n\n";
 if ( ! empty( $data['message'] ) ) {
 	echo esc_html( $data['message'] ) . "\n\n";
 }
-echo esc_html__( 'Reply to this email if you have any questions.', 'wpheka-edit-orders-for-woocommerce' ) . "\n\n";
+echo esc_html__( 'Reply to this email if you have any questions.', 'edit-orders-for-woocommerce' ) . "\n\n";
 
 if ( $additional_content ) {
 	echo esc_html( wp_strip_all_tags( wptexturize( $additional_content ) ) ) . "\n\n";

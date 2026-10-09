@@ -21,12 +21,12 @@ defined( 'ABSPATH' ) || exit;
 echo '= ' . esc_html( wp_strip_all_tags( $email_heading ) ) . " =\n\n";
 
 /* translators: %s: order number. */
-echo esc_html( sprintf( __( 'The customer asked to cancel order #%s.', 'wpheka-edit-orders-for-woocommerce' ), $order->get_order_number() ) ) . "\n\n";
+echo esc_html( sprintf( __( 'The customer asked to cancel order #%s.', 'edit-orders-for-woocommerce' ), $order->get_order_number() ) ) . "\n\n";
 if ( ! empty( $data['reason'] ) ) {
 	/* translators: %s: reason. */
-	echo esc_html( sprintf( __( 'Reason: %s', 'wpheka-edit-orders-for-woocommerce' ), $data['reason'] ) ) . "\n\n";
+	echo esc_html( sprintf( __( 'Reason: %s', 'edit-orders-for-woocommerce' ), $data['reason'] ) ) . "\n\n";
 }
-echo esc_html__( 'Approve or decline the request:', 'wpheka-edit-orders-for-woocommerce' ) . ' ' . esc_url_raw( admin_url( 'admin.php?page=edit-orders-for-woocommerce' ) ) . "\n\n";
+echo esc_html__( 'Approve or decline the request:', 'edit-orders-for-woocommerce' ) . ' ' . esc_url_raw( admin_url( 'admin.php?page=edit-orders-for-woocommerce' ) ) . "\n\n";
 do_action( 'woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email );
 
 if ( $additional_content ) {

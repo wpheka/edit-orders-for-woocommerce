@@ -25,8 +25,8 @@ class Edit_Orders_For_WooCommerce_Email_Order_Updated extends WC_Email {
 	public function __construct() {
 		$this->id             = 'edit_orders_for_woocommerce_order_updated';
 		$this->customer_email = true;
-		$this->title          = __( 'Order updated', 'wpheka-edit-orders-for-woocommerce' );
-		$this->description    = __( 'Sent to the customer when their order is changed after payment, with what changed and any refund.', 'wpheka-edit-orders-for-woocommerce' );
+		$this->title          = __( 'Order updated', 'edit-orders-for-woocommerce' );
+		$this->description    = __( 'Sent to the customer when their order is changed after payment, with what changed and any refund.', 'edit-orders-for-woocommerce' );
 		$this->template_html  = 'emails/edit-orders-order-updated.php';
 		$this->template_plain = 'emails/plain/edit-orders-order-updated.php';
 		$this->template_base  = EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'templates/';
@@ -44,7 +44,7 @@ class Edit_Orders_For_WooCommerce_Email_Order_Updated extends WC_Email {
 	 * @return string
 	 */
 	public function get_default_subject() {
-		return __( 'Your {site_title} order #{order_number} was updated', 'wpheka-edit-orders-for-woocommerce' );
+		return __( 'Your {site_title} order #{order_number} was updated', 'edit-orders-for-woocommerce' );
 	}
 
 	/**
@@ -53,7 +53,7 @@ class Edit_Orders_For_WooCommerce_Email_Order_Updated extends WC_Email {
 	 * @return string
 	 */
 	public function get_default_heading() {
-		return __( 'Your order was updated', 'wpheka-edit-orders-for-woocommerce' );
+		return __( 'Your order was updated', 'edit-orders-for-woocommerce' );
 	}
 
 	/**

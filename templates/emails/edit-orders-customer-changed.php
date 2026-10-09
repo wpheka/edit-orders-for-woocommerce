@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
 <?php /* translators: %s: order number. */ ?>
-<p><?php printf( esc_html__( 'The customer changed order #%s:', 'wpheka-edit-orders-for-woocommerce' ), esc_html( $order->get_order_number() ) ); ?></p>
+<p><?php printf( esc_html__( 'The customer changed order #%s:', 'edit-orders-for-woocommerce' ), esc_html( $order->get_order_number() ) ); ?></p>
 <?php if ( ! empty( $data['changes'] ) ) : ?>
 	<ul>
 		<?php foreach ( (array) $data['changes'] as $edit_orders_for_woocommerce_change ) : ?>
@@ -31,9 +31,9 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 <?php endif; ?>
 <?php if ( ! empty( $data['balance_due'] ) ) : ?>
 	<?php /* translators: %s: amount. */ ?>
-	<p><?php printf( esc_html__( 'The change costs %s more. It applies once the customer pays.', 'wpheka-edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $data['balance_due'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
+	<p><?php printf( esc_html__( 'The change costs %s more. It applies once the customer pays.', 'edit-orders-for-woocommerce' ), wp_kses_post( wc_price( $data['balance_due'], array( 'currency' => $order->get_currency() ) ) ) ); ?></p>
 <?php endif; ?>
-<p><a class="link" href="<?php echo esc_url( $order->get_edit_order_url() ); ?>"><?php esc_html_e( 'View the order', 'wpheka-edit-orders-for-woocommerce' ); ?></a></p>
+<p><a class="link" href="<?php echo esc_url( $order->get_edit_order_url() ); ?>"><?php esc_html_e( 'View the order', 'edit-orders-for-woocommerce' ); ?></a></p>
 
 <?php
 if ( $additional_content ) {

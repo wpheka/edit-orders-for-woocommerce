@@ -39,35 +39,35 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 		$result = true;
 
 		if ( 'staff' === $actor && ! Edit_Orders_For_WooCommerce_Settings::is_on( 'admin_enabled' ) ) {
-			$result = new WP_Error( 'edit_orders_for_woocommerce_admin_off', __( 'Editing paid orders is turned off in WooCommerce > Settings > Edit Orders.', 'wpheka-edit-orders-for-woocommerce' ) );
+			$result = new WP_Error( 'edit_orders_for_woocommerce_admin_off', __( 'Editing paid orders is turned off in WooCommerce > Settings > Edit Orders.', 'edit-orders-for-woocommerce' ) );
 		} elseif ( ! in_array( $order->get_status(), self::editable_statuses(), true ) ) {
 			$result = new WP_Error(
 				'edit_orders_for_woocommerce_status',
 				sprintf(
 					/* translators: %s: list of order statuses. */
-					__( 'Only orders in these statuses can be edited: %s.', 'wpheka-edit-orders-for-woocommerce' ),
+					__( 'Only orders in these statuses can be edited: %s.', 'edit-orders-for-woocommerce' ),
 					implode( ', ', array_map( 'wc_get_order_status_name', self::editable_statuses() ) )
 				)
 			);
 		} elseif ( ! $order->get_date_paid() && ! self::is_pay_on_delivery( $order ) ) {
 			// Unpaid orders are edited with WooCommerce's own editor. Pay-on-delivery
 			// orders are the exception: Processing while unpaid, and locked by core.
-			$result = new WP_Error( 'edit_orders_for_woocommerce_unpaid', __( 'This order is not paid yet. Edit it with the WooCommerce order editor.', 'wpheka-edit-orders-for-woocommerce' ) );
+			$result = new WP_Error( 'edit_orders_for_woocommerce_unpaid', __( 'This order is not paid yet. Edit it with the WooCommerce order editor.', 'edit-orders-for-woocommerce' ) );
 		} elseif ( $order->get_remaining_refund_amount() <= 0 ) {
-			$result = new WP_Error( 'edit_orders_for_woocommerce_refunded', __( 'This order is fully refunded.', 'wpheka-edit-orders-for-woocommerce' ) );
+			$result = new WP_Error( 'edit_orders_for_woocommerce_refunded', __( 'This order is fully refunded.', 'edit-orders-for-woocommerce' ) );
 		} elseif ( Edit_Orders_For_WooCommerce_Balance_Orders::get_open_balance_order( $order ) ) {
-			$result = new WP_Error( 'edit_orders_for_woocommerce_open_balance', __( 'This order has an unpaid balance order. Cancel it or wait for payment before editing again.', 'wpheka-edit-orders-for-woocommerce' ) );
+			$result = new WP_Error( 'edit_orders_for_woocommerce_open_balance', __( 'This order has an unpaid balance order. Cancel it or wait for payment before editing again.', 'edit-orders-for-woocommerce' ) );
 		} elseif ( Edit_Orders_For_WooCommerce_Balance_Orders::is_applying( $order ) ) {
-			$result = new WP_Error( 'edit_orders_for_woocommerce_applying', __( 'A balance order for this order was just paid and its changes are being applied. Try again in a moment.', 'wpheka-edit-orders-for-woocommerce' ) );
+			$result = new WP_Error( 'edit_orders_for_woocommerce_applying', __( 'A balance order for this order was just paid and its changes are being applied. Try again in a moment.', 'edit-orders-for-woocommerce' ) );
 		} elseif ( self::is_authorization_only( $order ) ) {
 			// A refund would void the whole authorization (Stripe does this).
-			$result = new WP_Error( 'edit_orders_for_woocommerce_uncaptured', __( 'This payment is authorized but not captured yet. Capture it before editing.', 'wpheka-edit-orders-for-woocommerce' ) );
+			$result = new WP_Error( 'edit_orders_for_woocommerce_uncaptured', __( 'This payment is authorized but not captured yet. Capture it before editing.', 'edit-orders-for-woocommerce' ) );
 		} elseif ( 'staff' === $actor && Edit_Orders_For_WooCommerce_Lock::held_by_other( $order, get_current_user_id() ) ) {
 			$holder = get_userdata( Edit_Orders_For_WooCommerce_Lock::holder( $order ) );
 			$result = new WP_Error(
 				'edit_orders_for_woocommerce_locked',
 				/* translators: %s: name of the user editing the order. */
-				sprintf( __( '%s is editing this order. Try again when they are done.', 'wpheka-edit-orders-for-woocommerce' ), $holder ? $holder->display_name : __( 'Another user', 'wpheka-edit-orders-for-woocommerce' ) )
+				sprintf( __( '%s is editing this order. Try again when they are done.', 'edit-orders-for-woocommerce' ), $holder ? $holder->display_name : __( 'Another user', 'edit-orders-for-woocommerce' ) )
 			);
 		}
 
@@ -93,12 +93,12 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 	 */
 	public static function check_item( WC_Order $order, $item ) {
 		if ( ! $item instanceof WC_Order_Item_Product || (int) $item->get_order_id() !== $order->get_id() ) {
-			return new WP_Error( 'edit_orders_for_woocommerce_item', __( 'That item is not on this order.', 'wpheka-edit-orders-for-woocommerce' ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_item', __( 'That item is not on this order.', 'edit-orders-for-woocommerce' ) );
 		}
 
 		if ( 0 !== (int) $order->get_qty_refunded_for_item( $item->get_id() ) || 0.0 !== (float) $order->get_total_refunded_for_item( $item->get_id() ) ) {
 			/* translators: %s: product name. */
-			return new WP_Error( 'edit_orders_for_woocommerce_item_refunded', sprintf( __( '"%s" already has a refund, so it can no longer be changed.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name() ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_item_refunded', sprintf( __( '"%s" already has a refund, so it can no longer be changed.', 'edit-orders-for-woocommerce' ), $item->get_name() ) );
 		}
 
 		// Part of this line was paid on a balance order (extra units or a price difference):
@@ -110,7 +110,7 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 				'edit_orders_for_woocommerce_item_balance',
 				sprintf(
 					/* translators: 1: product name, 2: balance order number. */
-					__( 'Part of "%1$s" was paid on balance order #%2$s, so it can no longer be changed here. Refund that part from balance order #%2$s.', 'wpheka-edit-orders-for-woocommerce' ),
+					__( 'Part of "%1$s" was paid on balance order #%2$s, so it can no longer be changed here. Refund that part from balance order #%2$s.', 'edit-orders-for-woocommerce' ),
 					$item->get_name(),
 					$balance ? $balance->get_order_number() : $balance_id
 				)
@@ -119,7 +119,7 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 
 		if ( ! $item->get_product() ) {
 			/* translators: %s: product name. */
-			return new WP_Error( 'edit_orders_for_woocommerce_item_product', sprintf( __( 'The product for "%s" no longer exists.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name() ) );
+			return new WP_Error( 'edit_orders_for_woocommerce_item_product', sprintf( __( 'The product for "%s" no longer exists.', 'edit-orders-for-woocommerce' ), $item->get_name() ) );
 		}
 
 		return true;
