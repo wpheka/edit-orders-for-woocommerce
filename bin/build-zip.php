@@ -2,7 +2,7 @@
 /**
  * Build the release zip: php bin/build-zip.php
  *
- * Copies the plugin into build/edit-orders-for-woocommerce-<version>.zip, leaving out
+ * Copies the plugin into build/wpheka-edit-orders-for-woocommerce-<version>.zip, leaving out
  * everything listed in .distignore (tests, dev tooling). Plain PHP with ZipArchive, so it
  * runs the same on macOS, Windows and in the wp-env container. Not shipped.
  *
@@ -16,7 +16,7 @@ if ( 'cli' !== PHP_SAPI ) {
 }
 
 $root   = dirname( __DIR__ );
-$header = file_get_contents( $root . '/edit-orders-for-woocommerce.php' );
+$header = file_get_contents( $root . '/wpheka-edit-orders-for-woocommerce.php' );
 
 if ( ! preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $header, $match ) ) {
 	fwrite( STDERR, "Version header not found.\n" );

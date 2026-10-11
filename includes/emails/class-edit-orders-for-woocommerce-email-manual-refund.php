@@ -24,8 +24,8 @@ class Edit_Orders_For_WooCommerce_Email_Manual_Refund extends WC_Email {
 	 */
 	public function __construct() {
 		$this->id             = 'edit_orders_for_woocommerce_manual_refund';
-		$this->title          = __( 'Manual refund needed', 'edit-orders-for-woocommerce' );
-		$this->description    = __( 'Sent to the store owner when an order change needs a refund the payment method cannot make automatically.', 'edit-orders-for-woocommerce' );
+		$this->title          = __( 'Manual refund needed', 'wpheka-edit-orders-for-woocommerce' );
+		$this->description    = __( 'Sent to the store owner when an order change needs a refund the payment method cannot make automatically.', 'wpheka-edit-orders-for-woocommerce' );
 		$this->template_html  = 'emails/edit-orders-manual-refund.php';
 		$this->template_plain = 'emails/plain/edit-orders-manual-refund.php';
 		$this->template_base  = EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'templates/';
@@ -44,7 +44,7 @@ class Edit_Orders_For_WooCommerce_Email_Manual_Refund extends WC_Email {
 	 * @return string
 	 */
 	public function get_default_subject() {
-		return __( '[{site_title}]: Manual refund needed for order #{order_number}', 'edit-orders-for-woocommerce' );
+		return __( '[{site_title}]: Manual refund needed for order #{order_number}', 'wpheka-edit-orders-for-woocommerce' );
 	}
 
 	/**
@@ -53,7 +53,7 @@ class Edit_Orders_For_WooCommerce_Email_Manual_Refund extends WC_Email {
 	 * @return string
 	 */
 	public function get_default_heading() {
-		return __( 'Manual refund needed', 'edit-orders-for-woocommerce' );
+		return __( 'Manual refund needed', 'wpheka-edit-orders-for-woocommerce' );
 	}
 
 	/**
@@ -128,10 +128,10 @@ class Edit_Orders_For_WooCommerce_Email_Manual_Refund extends WC_Email {
 		$this->form_fields = array_merge(
 			array(
 				'recipient' => array(
-					'title'       => __( 'Recipient(s)', 'edit-orders-for-woocommerce' ),
+					'title'       => __( 'Recipient(s)', 'wpheka-edit-orders-for-woocommerce' ),
 					'type'        => 'text',
 					/* translators: %s: admin email. */
-					'description' => sprintf( __( 'Separate several addresses with commas. Defaults to %s.', 'edit-orders-for-woocommerce' ), esc_html( get_option( 'admin_email' ) ) ),
+					'description' => sprintf( __( 'Separate several addresses with commas. Defaults to %s.', 'wpheka-edit-orders-for-woocommerce' ), esc_html( get_option( 'admin_email' ) ) ),
 					'placeholder' => '',
 					'default'     => '',
 					'desc_tip'    => true,

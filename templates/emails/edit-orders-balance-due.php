@@ -23,12 +23,12 @@ defined( 'ABSPATH' ) || exit;
 do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
 <?php /* translators: %s: customer first name. */ ?>
-<p><?php printf( esc_html__( 'Hi %s,', 'edit-orders-for-woocommerce' ), esc_html( $order->get_billing_first_name() ) ); ?></p>
+<p><?php printf( esc_html__( 'Hi %s,', 'wpheka-edit-orders-for-woocommerce' ), esc_html( $order->get_billing_first_name() ) ); ?></p>
 <p>
 	<?php
 	printf(
 		/* translators: 1: original order number, 2: amount. */
-		esc_html__( 'The change to your order #%1$s costs %2$s more. It will be made as soon as you pay the difference:', 'edit-orders-for-woocommerce' ),
+		esc_html__( 'The change to your order #%1$s costs %2$s more. It will be made as soon as you pay the difference:', 'wpheka-edit-orders-for-woocommerce' ),
 		esc_html( $original_order ? $original_order->get_order_number() : '' ),
 		wp_kses_post( wc_price( $order->get_total(), array( 'currency' => $order->get_currency() ) ) )
 	);
@@ -43,8 +43,8 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 	</ul>
 <?php endif; ?>
 
-<p><a class="link" href="<?php echo esc_url( $pay_url ); ?>"><?php esc_html_e( 'Pay the difference', 'edit-orders-for-woocommerce' ); ?></a></p>
-<p><?php esc_html_e( 'Until it is paid, your order stays as you first placed it.', 'edit-orders-for-woocommerce' ); ?></p>
+<p><a class="link" href="<?php echo esc_url( $pay_url ); ?>"><?php esc_html_e( 'Pay the difference', 'wpheka-edit-orders-for-woocommerce' ); ?></a></p>
+<p><?php esc_html_e( 'Until it is paid, your order stays as you first placed it.', 'wpheka-edit-orders-for-woocommerce' ); ?></p>
 
 <?php
 do_action( 'woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email );

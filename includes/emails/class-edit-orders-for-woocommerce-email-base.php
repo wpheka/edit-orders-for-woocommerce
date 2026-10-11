@@ -120,10 +120,10 @@ abstract class Edit_Orders_For_WooCommerce_Email_Base extends WC_Email {
 		$this->form_fields = array_merge(
 			array(
 				'recipient' => array(
-					'title'       => __( 'Recipient(s)', 'edit-orders-for-woocommerce' ),
+					'title'       => __( 'Recipient(s)', 'wpheka-edit-orders-for-woocommerce' ),
 					'type'        => 'text',
 					/* translators: %s: admin email. */
-					'description' => sprintf( __( 'Separate several addresses with commas. Defaults to %s.', 'edit-orders-for-woocommerce' ), esc_html( get_option( 'admin_email' ) ) ),
+					'description' => sprintf( __( 'Separate several addresses with commas. Defaults to %s.', 'wpheka-edit-orders-for-woocommerce' ), esc_html( get_option( 'admin_email' ) ) ),
 					'placeholder' => '',
 					'default'     => '',
 					'desc_tip'    => true,

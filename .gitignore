@@ -7,3 +7,4 @@ build/
 .syncthing.*.tmp
 ~syncthing~*.tmp
 .wpheka-quality-reports/
+.DS_Store

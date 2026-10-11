@@ -27,8 +27,8 @@ class Edit_Orders_For_WooCommerce_Email_Balance_Due extends WC_Email {
 	public function __construct() {
 		$this->id             = 'edit_orders_for_woocommerce_balance_due';
 		$this->customer_email = true;
-		$this->title          = __( 'Balance due for an order change', 'edit-orders-for-woocommerce' );
-		$this->description    = __( 'Sent to the customer when a change to their order costs more, with a link to pay the difference.', 'edit-orders-for-woocommerce' );
+		$this->title          = __( 'Balance due for an order change', 'wpheka-edit-orders-for-woocommerce' );
+		$this->description    = __( 'Sent to the customer when a change to their order costs more, with a link to pay the difference.', 'wpheka-edit-orders-for-woocommerce' );
 		$this->template_html  = 'emails/edit-orders-balance-due.php';
 		$this->template_plain = 'emails/plain/edit-orders-balance-due.php';
 		$this->template_base  = EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'templates/';
@@ -46,7 +46,7 @@ class Edit_Orders_For_WooCommerce_Email_Balance_Due extends WC_Email {
 	 * @return string
 	 */
 	public function get_default_subject() {
-		return __( 'Pay the difference for your {site_title} order #{original_order_number}', 'edit-orders-for-woocommerce' );
+		return __( 'Pay the difference for your {site_title} order #{original_order_number}', 'wpheka-edit-orders-for-woocommerce' );
 	}
 
 	/**
@@ -55,7 +55,7 @@ class Edit_Orders_For_WooCommerce_Email_Balance_Due extends WC_Email {
 	 * @return string
 	 */
 	public function get_default_heading() {
-		return __( 'Your order change is waiting for payment', 'edit-orders-for-woocommerce' );
+		return __( 'Your order change is waiting for payment', 'wpheka-edit-orders-for-woocommerce' );
 	}
 
 	/**

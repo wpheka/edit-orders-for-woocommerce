@@ -8,5 +8,5 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WP_UNINSTALL_PLUGIN', 'edit-orders-for-woocommerce/edit-orders-for-woocommerce.php' );
+define( 'WP_UNINSTALL_PLUGIN', 'edit-orders-for-woocommerce/wpheka-edit-orders-for-woocommerce.php' );
 require WP_PLUGIN_DIR . '/edit-orders-for-woocommerce/uninstall.php';
