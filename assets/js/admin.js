@@ -226,7 +226,9 @@
 					send_pay_link: $panel.find( 'input[name="send_pay_link"]' ).is( ':checked' ) ? 1 : '',
 					notify_customer: $panel.find( 'input[name="notify_customer"]' ).is( ':checked' ) ? 1 : '',
 					// The server refuses the apply if the plan no longer matches this preview.
-					expect: $panel.find( 'input[name="expect"]' ).val() || ''
+					expect: $panel.find( 'input[name="expect"]' ).val() || '',
+					// The preview's run ID, so the debug log follows the change from preview to refund.
+					run: $panel.find( 'input[name="run"]' ).val() || ''
 				};
 				post( 'apply', $.param( options ) + '&' + formData() ).done(
 					function ( response ) {

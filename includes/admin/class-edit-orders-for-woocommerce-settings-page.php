@@ -212,6 +212,19 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 				'id'    => 'edit_orders_advanced',
 			),
 			array(
+				'title'    => __( 'Debug log', 'wpheka-edit-orders-for-woocommerce' ),
+				'desc'     => sprintf(
+					/* translators: %s: link to WooCommerce > Status > Logs. */
+					__( 'Record every step of each change in %s, to share with support when something goes wrong.', 'wpheka-edit-orders-for-woocommerce' ),
+					'<a href="' . esc_url( admin_url( 'admin.php?page=wc-status&tab=logs&source=' . Edit_Orders_For_WooCommerce_Log::SOURCE ) ) . '">' . esc_html__( 'WooCommerce > Status > Logs', 'wpheka-edit-orders-for-woocommerce' ) . '</a>'
+				),
+				// A checkbox shows a text desc_tip below the box, as the other fields here show theirs.
+				'desc_tip' => __( 'Errors, warnings and refusals are always recorded. Turn this on to record every step as well. The log has no names, emails or addresses.', 'wpheka-edit-orders-for-woocommerce' ),
+				'id'       => $this->field( 'debug_log' ),
+				'type'     => 'checkbox',
+				'default'  => $defaults['debug_log'],
+			),
+			array(
 				'title'   => __( 'Delete data on uninstall', 'wpheka-edit-orders-for-woocommerce' ),
 				'desc'    => __( 'Remove the activity log, the settings and the plugin\'s data on orders (manual refund flags and cancellation requests) when the plugin is deleted. Balance orders are real orders and are always kept.', 'wpheka-edit-orders-for-woocommerce' ),
 				'id'      => 'edit_orders_for_woocommerce_delete_data',
@@ -253,6 +266,9 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 	 * Clamp the numbers after saving, so a typed value can't break the rules.
 	 */
 	public function save() {
+		$before                = wp_parse_args( (array) get_option( Edit_Orders_For_WooCommerce_Settings::OPTION, array() ), Edit_Orders_For_WooCommerce_Settings::defaults() );
+		$before['delete_data'] = get_option( 'edit_orders_for_woocommerce_delete_data', 'no' );
+
 		parent::save();
 
 		$settings = (array) get_option( Edit_Orders_For_WooCommerce_Settings::OPTION, array() );
@@ -268,5 +284,41 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 			$settings['editable_statuses'] = Edit_Orders_For_WooCommerce_Settings::defaults()['editable_statuses'];
 		}
 		update_option( Edit_Orders_For_WooCommerce_Settings::OPTION, $settings );
+
+		$after                = wp_parse_args( $settings, Edit_Orders_For_WooCommerce_Settings::defaults() );
+		$after['delete_data'] = get_option( 'edit_orders_for_woocommerce_delete_data', 'no' );
+		self::log_changes( $before, $after );
+	}
+
+	/**
+	 * Log the settings that changed, with their new values.
+	 *
+	 * @param array $before Settings before saving.
+	 * @param array $after  Settings after saving.
+	 */
+	public static function log_changes( array $before, array $after ) {
+		$changed = array();
+		foreach ( $after as $key => $value ) {
+			$old = isset( $before[ $key ] ) ? $before[ $key ] : null;
+			// Numbers come back as strings or integers depending on where they were saved.
+			$same = is_array( $value ) || is_array( $old )
+				? (string) wp_json_encode( array_values( (array) $old ) ) === (string) wp_json_encode( array_values( (array) $value ) )
+				: (string) $old === (string) $value;
+			if ( $same ) {
+				continue;
+			}
+			$text      = is_array( $value ) ? implode( ', ', array_map( 'strval', $value ) ) : (string) $value;
+			$changed[] = $key . ' = ' . Edit_Orders_For_WooCommerce_Log::clip( $text );
+		}
+
+		if ( $changed ) {
+			// Switching the debug log is recorded either way: once off, info would not be.
+			$level = isset( $before['debug_log'], $after['debug_log'] ) && (string) $before['debug_log'] !== (string) $after['debug_log'] ? 'notice' : 'info';
+			call_user_func(
+				array( 'Edit_Orders_For_WooCommerce_Log', $level ),
+				'settings saved by ' . Edit_Orders_For_WooCommerce_Log::actor( 'staff' ) . ': ' . implode( '; ', $changed ),
+				array( 'changed' => $changed )
+			);
+		}
 	}
 }

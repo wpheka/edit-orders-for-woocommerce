@@ -66,13 +66,37 @@ class Edit_Orders_For_WooCommerce_Refunds {
 			$quiet();
 		}
 
+		$gateway_id = $order->get_payment_method();
+		$context    = array(
+			'order'    => $order->get_id(),
+			'amount'   => $args['amount'],
+			'currency' => $order->get_currency(),
+			'gateway'  => $gateway_id,
+			'lines'    => self::lines_summary( $order, $refund_lines ),
+		);
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf(
+				'order %d: refund requested: %s via %s (can refund: %s)%s',
+				$order->get_id(),
+				Edit_Orders_For_WooCommerce_Log::money( $amount, $order->get_currency() ),
+				'' !== $gateway_id ? $gateway_id : 'no payment method',
+				$can_send ? 'yes' : 'no',
+				$on_delivery ? ', collected on delivery so no money moves' : ''
+			),
+			$context
+		);
+
 		$gateway_error = '';
 		$refund        = wc_create_refund( $args );
 
 		if ( is_wp_error( $refund ) && $can_send ) {
 			// wc_create_refund() deleted the refund record when the gateway failed; record it
 			// without payment, and without telling the customer it was refunded.
-			$gateway_error          = $refund->get_error_message();
+			$gateway_error = $refund->get_error_message();
+			Edit_Orders_For_WooCommerce_Log::warning(
+				sprintf( 'order %d: gateway %s refused the refund of %s: %s. Recording it without payment.', $order->get_id(), $gateway_id, Edit_Orders_For_WooCommerce_Log::money( $amount, $order->get_currency() ), rtrim( Edit_Orders_For_WooCommerce_Log::clip( $gateway_error ), '. ' ) ),
+				array_merge( $context, array( 'gateway_error' => Edit_Orders_For_WooCommerce_Log::clip( $gateway_error ) ) )
+			);
 			$args['refund_payment'] = false;
 			$quiet();
 			$refund = wc_create_refund( $args );
@@ -81,8 +105,30 @@ class Edit_Orders_For_WooCommerce_Refunds {
 		remove_filter( 'woocommerce_email_enabled_customer_partially_refunded_order', $no_email );
 
 		if ( is_wp_error( $refund ) ) {
+			// The caller logs it as an error, with what else the run did.
 			return $refund;
 		}
+
+		$transaction = self::transaction_id( $refund );
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf(
+				'order %d: refund #%d recorded: %s, money sent through %s: %s%s',
+				$order->get_id(),
+				$refund->get_id(),
+				Edit_Orders_For_WooCommerce_Log::money( $amount, $order->get_currency() ),
+				'' !== $gateway_id ? $gateway_id : 'no payment method',
+				$refund->get_refunded_payment() ? 'yes' : 'no',
+				'' !== $transaction ? ', transaction ' . $transaction : ''
+			),
+			array_merge(
+				$context,
+				array(
+					'refund_id'      => $refund->get_id(),
+					'refunded'       => (bool) $refund->get_refunded_payment(),
+					'transaction_id' => $transaction,
+				)
+			)
+		);
 
 		$manual = ! $on_delivery && (float) $amount > 0 && ( ! $can_send || '' !== $gateway_error );
 
@@ -106,6 +152,55 @@ class Edit_Orders_For_WooCommerce_Refunds {
 	}
 
 	/**
+	 * Refund lines for the log: product, quantity back to stock and amounts per item ID.
+	 *
+	 * @param WC_Order $order        Order.
+	 * @param array[]  $refund_lines Refund lines keyed by item ID.
+	 * @return array[]
+	 */
+	private static function lines_summary( WC_Order $order, array $refund_lines ) {
+		$lines = array();
+		foreach ( $refund_lines as $item_id => $line ) {
+			$item              = $order->get_item( $item_id );
+			$lines[ $item_id ] = array(
+				'product' => $item instanceof WC_Order_Item_Product ? ( $item->get_variation_id() ? $item->get_variation_id() : $item->get_product_id() ) : 0,
+				'qty'     => isset( $line['qty'] ) ? (int) $line['qty'] : 0,
+				'total'   => isset( $line['refund_total'] ) ? (float) $line['refund_total'] : 0.0,
+				'tax'     => isset( $line['refund_tax'] ) ? array_sum( array_map( 'floatval', (array) $line['refund_tax'] ) ) : 0.0,
+			);
+		}
+
+		return $lines;
+	}
+
+	/**
+	 * The gateway's ID for a refund, so it can be found in the gateway's dashboard.
+	 * WooCommerce has no field for it: gateways that keep one store it on the refund.
+	 *
+	 * @param WC_Order_Refund $refund Refund.
+	 * @return string Empty when the gateway keeps none.
+	 */
+	private static function transaction_id( $refund ) {
+		/**
+		 * Refund meta keys that may hold the gateway's refund ID, checked in order.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string[]        $keys   Meta keys. Defaults: `_transaction_id` and Stripe's `_stripe_refund_id`.
+		 * @param WC_Order_Refund $refund Refund.
+		 */
+		$keys = (array) apply_filters( 'edit_orders_for_woocommerce_refund_transaction_meta_keys', array( '_transaction_id', '_stripe_refund_id' ), $refund );
+		foreach ( $keys as $key ) {
+			$value = $refund->get_meta( (string) $key );
+			if ( is_scalar( $value ) && '' !== (string) $value ) {
+				return Edit_Orders_For_WooCommerce_Log::clip( (string) $value );
+			}
+		}
+
+		return '';
+	}
+
+	/**
 	 * Flag an order for a refund the store owner must make by hand.
 	 *
 	 * @param WC_Order $order         Order.
@@ -113,8 +208,23 @@ class Edit_Orders_For_WooCommerce_Refunds {
 	 * @param int      $refund_id     WooCommerce refund record.
 	 * @param string   $gateway_error Why the gateway didn't refund, if it tried.
 	 * @param string   $reason        Why a refund is owed when no refund was recorded (no record, money only).
+	 * @param string   $code          Short code for the log saying why (since 1.1.0).
 	 */
-	public static function flag_manual_refund( WC_Order $order, $amount, $refund_id, $gateway_error, $reason = '' ) {
+	public static function flag_manual_refund( WC_Order $order, $amount, $refund_id, $gateway_error, $reason = '', $code = '' ) {
+		if ( '' === $code ) {
+			$code = '' !== $gateway_error ? 'gateway_refused' : ( '' !== $reason ? 'owed_without_refund' : 'no_automatic_refunds' );
+		}
+		Edit_Orders_For_WooCommerce_Log::warning(
+			sprintf( 'order %d: manual refund flagged: %s (%s)%s', $order->get_id(), Edit_Orders_For_WooCommerce_Log::money( $amount, $order->get_currency() ), $code, $refund_id ? ', refund #' . (int) $refund_id . ' recorded without payment' : '' ),
+			array(
+				'order'     => $order->get_id(),
+				'amount'    => $amount,
+				'currency'  => $order->get_currency(),
+				'code'      => $code,
+				'refund_id' => (int) $refund_id,
+			)
+		);
+
 		$order = wc_get_order( $order->get_id() );
 		$total = (float) $order->get_meta( self::MANUAL_REFUND_META ) + (float) $amount;
 		$money = wc_price( $amount, array( 'currency' => $order->get_currency() ) );
@@ -156,6 +266,15 @@ class Edit_Orders_For_WooCommerce_Refunds {
 	 * @param string   $note   Why it is not needed.
 	 */
 	public static function clear_manual_refund( WC_Order $order, $amount, $note ) {
+		Edit_Orders_For_WooCommerce_Log::warning(
+			sprintf( 'order %d: manual refund flag of %s taken back: it is not needed after all', $order->get_id(), Edit_Orders_For_WooCommerce_Log::money( $amount, $order->get_currency() ) ),
+			array(
+				'order'    => $order->get_id(),
+				'amount'   => $amount,
+				'currency' => $order->get_currency(),
+			)
+		);
+
 		$order = wc_get_order( $order->get_id() );
 		$left  = (float) $order->get_meta( self::MANUAL_REFUND_META ) - (float) $amount;
 

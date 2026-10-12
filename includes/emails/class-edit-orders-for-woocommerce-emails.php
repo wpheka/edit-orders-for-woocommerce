@@ -24,6 +24,55 @@ class Edit_Orders_For_WooCommerce_Emails {
 		add_action( 'edit_orders_for_woocommerce_cancelled', array( __CLASS__, 'cancelled' ), 10, 4 );
 		add_action( 'edit_orders_for_woocommerce_cancel_declined', array( __CLASS__, 'cancel_declined' ), 10, 2 );
 		add_action( 'edit_orders_for_woocommerce_customer_changed', array( __CLASS__, 'customer_changed' ), 10, 2 );
+		add_action( 'woocommerce_email_sent', array( __CLASS__, 'log_sent' ), 10, 3 );
+	}
+
+	/**
+	 * Log each of our emails WooCommerce sent, or failed to send. Never the recipient.
+	 *
+	 * @param bool     $sent     Whether wp_mail() accepted it.
+	 * @param string   $email_id Email ID.
+	 * @param WC_Email $email    Email.
+	 */
+	public static function log_sent( $sent, $email_id, $email = null ) {
+		if ( 0 !== strpos( (string) $email_id, 'edit_orders_for_woocommerce_' ) ) {
+			return;
+		}
+		$order_id = ( $email instanceof WC_Email && $email->object instanceof WC_Order ) ? $email->object->get_id() : 0;
+		Edit_Orders_For_WooCommerce_Log::debug(
+			sprintf( 'order %d: email %s %s', $order_id, $email_id, $sent ? 'sent' : 'failed to send' ),
+			array(
+				'order'    => $order_id,
+				'email_id' => $email_id,
+				'sent'     => (bool) $sent,
+			)
+		);
+	}
+
+	/**
+	 * Log an email that is not sent because it is turned off, or because the person
+	 * making the change chose not to send it.
+	 *
+	 * @param WC_Email|null $email    Email.
+	 * @param int           $order_id Order ID.
+	 * @param bool          $wanted   False when the editor chose not to send it.
+	 * @return bool Whether to go on and trigger it.
+	 */
+	private static function will_send( $email, $order_id, $wanted = true ) {
+		if ( ! $email ) {
+			return false;
+		}
+		if ( ! $wanted || ! $email->is_enabled() ) {
+			Edit_Orders_For_WooCommerce_Log::debug(
+				sprintf( 'order %d: email %s not sent: %s', $order_id, $email->id, $wanted ? 'turned off in WooCommerce > Settings > Emails' : 'the person making the change chose not to send it' ),
+				array(
+					'order'    => (int) $order_id,
+					'email_id' => $email->id,
+				)
+			);
+		}
+
+		return $wanted;
 	}
 
 	/**
@@ -86,14 +135,14 @@ class Edit_Orders_For_WooCommerce_Emails {
 
 		if ( 'balance_due' === $result['status'] ) {
 			$email = self::email( 'Edit_Orders_For_WooCommerce_Email_Balance_Due' );
-			if ( $email && $args['send_pay_link'] ) {
+			if ( self::will_send( $email, (int) $result['balance_order_id'], (bool) $args['send_pay_link'] ) ) {
 				$email->trigger( $result['balance_order_id'], false, $result['plan']->get_descriptions() );
 			}
 			return;
 		}
 
 		$email = self::email( 'Edit_Orders_For_WooCommerce_Email_Order_Updated' );
-		if ( $email && $args['notify_customer'] ) {
+		if ( self::will_send( $email, $order->get_id(), (bool) $args['notify_customer'] ) ) {
 			$email->trigger( $order->get_id(), false, self::summary( $result ) );
 		}
 	}
@@ -113,7 +162,7 @@ class Edit_Orders_For_WooCommerce_Emails {
 		}
 
 		$email = self::email( 'Edit_Orders_For_WooCommerce_Email_Order_Updated' );
-		if ( $email && ! is_wp_error( $result ) ) {
+		if ( ! is_wp_error( $result ) && self::will_send( $email, $order->get_id() ) ) {
 			$summary                  = self::summary( $result );
 			$summary['balance_order'] = $balance->get_order_number();
 			$email->trigger( $order->get_id(), false, $summary );
@@ -131,7 +180,7 @@ class Edit_Orders_For_WooCommerce_Emails {
 	 */
 	public static function manual_refund_needed( $order, $amount, $refund_id, $gateway_error, $reason = '' ) {
 		$email = self::email( 'Edit_Orders_For_WooCommerce_Email_Manual_Refund' );
-		if ( $email ) {
+		if ( self::will_send( $email, $order->get_id() ) ) {
 			$email->trigger(
 				$order->get_id(),
 				false,
@@ -152,7 +201,7 @@ class Edit_Orders_For_WooCommerce_Emails {
 	 */
 	public static function cancel_requested( $order, $reason ) {
 		$email = self::email( 'Edit_Orders_For_WooCommerce_Email_Cancel_Request' );
-		if ( $email ) {
+		if ( self::will_send( $email, $order->get_id() ) ) {
 			$email->trigger( $order->get_id(), $order, array( 'reason' => $reason ) );
 		}
 	}
@@ -167,7 +216,7 @@ class Edit_Orders_For_WooCommerce_Emails {
 	 */
 	public static function cancelled( $order, $actor, $reason, $result ) {
 		$email = self::email( 'Edit_Orders_For_WooCommerce_Email_Cancelled' );
-		if ( $email ) {
+		if ( self::will_send( $email, $order->get_id() ) ) {
 			$email->trigger(
 				$order->get_id(),
 				$order,
@@ -188,7 +237,7 @@ class Edit_Orders_For_WooCommerce_Emails {
 	 */
 	public static function cancel_declined( $order, $message ) {
 		$email = self::email( 'Edit_Orders_For_WooCommerce_Email_Cancel_Declined' );
-		if ( $email ) {
+		if ( self::will_send( $email, $order->get_id() ) ) {
 			$email->trigger( $order->get_id(), $order, array( 'message' => $message ) );
 		}
 	}
@@ -201,7 +250,7 @@ class Edit_Orders_For_WooCommerce_Emails {
 	 */
 	public static function customer_changed( $order, $data ) {
 		$email = self::email( 'Edit_Orders_For_WooCommerce_Email_Customer_Changed' );
-		if ( $email ) {
+		if ( self::will_send( $email, $order->get_id() ) ) {
 			$email->trigger( $order->get_id(), $order, $data );
 		}
 	}

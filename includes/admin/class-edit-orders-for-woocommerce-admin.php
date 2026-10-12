@@ -593,6 +593,8 @@ class Edit_Orders_For_WooCommerce_Admin {
 		}
 		echo '</p>';
 		echo '<input type="hidden" name="expect" value="' . esc_attr( $plan->fingerprint() ) . '" />';
+		// Applying continues the preview's run in the log.
+		echo '<input type="hidden" name="run" value="' . esc_attr( Edit_Orders_For_WooCommerce_Log::run_id() ) . '" />';
 		echo '<p><button type="button" class="button button-primary" id="edit-orders-apply">' . esc_html__( 'Apply changes', 'wpheka-edit-orders-for-woocommerce' ) . '</button></p>';
 		echo '</div>';
 
@@ -700,12 +702,21 @@ class Edit_Orders_For_WooCommerce_Admin {
 
 	/**
 	 * AJAX: preview.
+	 *
+	 * @throws Throwable An unexpected error, rethrown once it is logged.
 	 */
 	public static function ajax_preview() {
 		$order = self::ajax_order();
 		Edit_Orders_For_WooCommerce_Lock::acquire( $order, get_current_user_id() );
 
-		wp_send_json_success( self::preview( $order, self::changes_from_request( $order, self::posted_form() ) ) );
+		try {
+			$preview = self::preview( $order, self::changes_from_request( $order, self::posted_form() ) );
+		} catch ( Throwable $e ) {
+			Edit_Orders_For_WooCommerce_Settlement_Executor::log_exception( 'previewing a change to order ' . $order->get_id(), $e, $order->get_id() );
+			throw $e;
+		}
+
+		wp_send_json_success( $preview );
 	}
 
 	/**
@@ -713,7 +724,8 @@ class Edit_Orders_For_WooCommerce_Admin {
 	 *
 	 * @param WC_Order $order   Order.
 	 * @param array    $form    Posted form.
-	 * @param array    $options send_pay_link, notify_customer, expect (fingerprint of the preview).
+	 * @param array    $options send_pay_link, notify_customer, expect (fingerprint of the preview),
+	 *                          run (the preview's run ID, so the log tells one story).
 	 * @return array|WP_Error Executor result.
 	 */
 	public static function apply( WC_Order $order, array $form, array $options ) {
@@ -725,6 +737,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 				'send_pay_link'   => ! empty( $options['send_pay_link'] ),
 				'notify_customer' => ! empty( $options['notify_customer'] ),
 				'expect'          => isset( $options['expect'] ) ? (string) $options['expect'] : '',
+				'run'             => isset( $options['run'] ) ? (string) $options['run'] : '',
 			)
 		);
 
@@ -745,9 +758,11 @@ class Edit_Orders_For_WooCommerce_Admin {
 			'send_pay_link'   => ! empty( $_POST['send_pay_link'] ),
 			'notify_customer' => ! empty( $_POST['notify_customer'] ),
 			'expect'          => isset( $_POST['expect'] ) ? sanitize_key( wp_unslash( $_POST['expect'] ) ) : '',
+			'run'             => isset( $_POST['run'] ) ? sanitize_key( wp_unslash( $_POST['run'] ) ) : '',
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
+		// The executor logs an unexpected error itself.
 		$result = self::apply( $order, self::posted_form(), $options );
 		if ( is_wp_error( $result ) ) {
 			wp_send_json_error( array( 'message' => $result->get_error_message() ) );

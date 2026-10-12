@@ -4,7 +4,7 @@ Tags: edit order, change order, cancel order, order editing, woocommerce
 Requires at least: 6.6
 Tested up to: 7.1.3
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -58,6 +58,7 @@ Seven WooCommerce emails, which you can turn on or off and reword in WooCommerce
 * Works with High-Performance Order Storage (HPOS) on or off and with the Cart and Checkout blocks
 * Works with classic and block themes
 * Templates and emails can be overridden in your theme; developer hooks are documented
+* A debug log you can share with support, with no names, emails or addresses in it
 * No tracking and no notices outside its own screens
 
 == Installation ==
@@ -89,6 +90,12 @@ Refunds and balance orders are ordinary WooCommerce records with tax split per r
 
 Your settings and activity log are kept, unless you tick "Delete data on uninstall" in the settings. Balance orders are ordinary orders and are always kept.
 
+= How do I send a log to support? =
+
+Go to WooCommerce > Settings > Edit Orders, turn on **Debug log** and save. Repeat what went wrong. Then open WooCommerce > Status > Logs, choose the source `wpheka-edit-orders-for-woocommerce`, download the log and attach it to your support request.
+
+The plugin does not write names, emails, phone numbers or addresses to the log. It records order numbers, amounts, payment method IDs and country and state codes. Errors and warnings are recorded even with Debug log off. The plugin sends nothing anywhere: you decide what to share. Turn Debug log off again when you are done.
+
 == Screenshots ==
 
 1. Preview before you apply a change: what changes, the refund and the stock moves.
@@ -99,6 +106,13 @@ Your settings and activity log are kept, unless you tick "Delete data on uninsta
 6. Settings in WooCommerce > Settings > Edit Orders.
 
 == Changelog ==
+
+= 1.1.0 =
+* New: a Debug log setting in WooCommerce > Settings > Edit Orders. With it on, every step of each change is recorded in WooCommerce > Status > Logs, to share with support. Errors and warnings are always recorded. The log has no names, emails or addresses. Nothing is sent anywhere.
+* New: one ID per change in the log, from the preview to the payment of a balance order and its refunds.
+* New: refunds in the log name the payment method and, when the payment gateway keeps one, its refund ID, to find them in the gateway's dashboard.
+* New: an Edit Orders section in WooCommerce > Status > System Status with the plugin's settings, tax and payment set-up and counts of orders that need attention.
+* Developers: the class Edit_Orders_For_WooCommerce_Log and the filters edit_orders_for_woocommerce_debug_log and edit_orders_for_woocommerce_refund_transaction_meta_keys.
 
 = 1.0.1 =
 * New: a line with extra units or a price difference paid on a balance order can now be decreased, removed or swapped. The refund includes what was paid on the balance order.
@@ -114,6 +128,9 @@ Your settings and activity log are kept, unless you tick "Delete data on uninsta
 * First release.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Adds a Debug log to share with support and an Edit Orders section in System Status.
 
 = 1.0.1 =
 Edit lines partly paid on a balance order, plus fixes to refund and tax amounts. Recommended for all stores.

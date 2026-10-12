@@ -83,6 +83,8 @@ class Edit_Orders_For_WooCommerce_Activity {
 
 	/**
 	 * Handle approve and decline (admin-post).
+	 *
+	 * @throws Throwable An unexpected error, rethrown once it is logged.
 	 */
 	public static function handle_decision() {
 		$order_id = isset( $_REQUEST['order_id'] ) ? absint( wp_unslash( $_REQUEST['order_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- checked on the next line, per order.
@@ -97,7 +99,12 @@ class Edit_Orders_For_WooCommerce_Activity {
 		$message  = isset( $_REQUEST['message'] ) ? sanitize_textarea_field( wp_unslash( $_REQUEST['message'] ) ) : '';
 		$redirect = isset( $_REQUEST['redirect'] ) ? esc_url_raw( wp_unslash( $_REQUEST['redirect'] ) ) : admin_url( 'admin.php?page=' . self::PAGE );
 
-		$result = $order ? self::decide( $order, $decision, $message ) : new WP_Error( 'edit_orders_for_woocommerce_not_found', __( 'Order not found.', 'wpheka-edit-orders-for-woocommerce' ) );
+		try {
+			$result = $order ? self::decide( $order, $decision, $message ) : new WP_Error( 'edit_orders_for_woocommerce_not_found', __( 'Order not found.', 'wpheka-edit-orders-for-woocommerce' ) );
+		} catch ( Throwable $e ) {
+			Edit_Orders_For_WooCommerce_Settlement_Executor::log_exception( 'answering the cancellation request on order ' . $order_id, $e, $order_id );
+			throw $e;
+		}
 		$notice = is_wp_error( $result ) ? 'error' : $decision;
 		if ( is_wp_error( $result ) ) {
 			// Say why on the next screen, not just that it failed.

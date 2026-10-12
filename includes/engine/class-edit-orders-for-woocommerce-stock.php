@@ -55,6 +55,28 @@ class Edit_Orders_For_WooCommerce_Stock {
 		$item->set_product( $new_variation );
 		$item->save();
 
+		$old_id = $old_product ? $old_product->get_id() : 0;
+		$back   = ( $order->get_order_stock_reduced() && $reduced > 0 && $old_product && $old_product->managing_stock() ) ? $reduced : 0;
+		$taken  = ( $order->get_order_stock_reduced() && $new_variation->managing_stock() && $quantity > 0 ) ? $quantity : 0;
+		Edit_Orders_For_WooCommerce_Log::debug(
+			sprintf(
+				'order %d: item %d switched from product %d to %d; stock: %s',
+				$order->get_id(),
+				$item->get_id(),
+				$old_id,
+				$new_variation->get_id(),
+				$order->get_order_stock_reduced() ? sprintf( '%d back to product %d, %d taken from product %d', $back, $old_id, $taken, $new_variation->get_id() ) : 'not reduced on this order, so none moved'
+			),
+			array(
+				'order'   => $order->get_id(),
+				'item_id' => $item->get_id(),
+				'from'    => $old_id,
+				'to'      => $new_variation->get_id(),
+				'back'    => $back,
+				'taken'   => $taken,
+			)
+		);
+
 		/* translators: %s: list of stock moves. */
 		return $moves ? sprintf( __( 'Stock moved: %s.', 'wpheka-edit-orders-for-woocommerce' ), implode( ', ', $moves ) ) : '';
 	}

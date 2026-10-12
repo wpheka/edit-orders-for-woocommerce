@@ -214,6 +214,10 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 			$balance->calculate_totals( true );
 		}
 		$balance->update_meta_data( self::PLAN_META, $plan->to_array() );
+		// The steps when it is paid, maybe days later, continue this change's run in the log.
+		if ( '' !== Edit_Orders_For_WooCommerce_Log::run_id() ) {
+			$balance->update_meta_data( Edit_Orders_For_WooCommerce_Log::RUN_META, Edit_Orders_For_WooCommerce_Log::run_id() );
+		}
 		$balance->add_order_note(
 			/* translators: %s: original order number. */
 			sprintf( __( 'Balance for changes to order #%s.', 'wpheka-edit-orders-for-woocommerce' ), $order->get_order_number() )
@@ -224,7 +228,28 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$order->update_meta_data( self::OPEN_BALANCE_META, $balance->get_id() );
 		$order->save();
 
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf( 'order %d: balance order %d created: %s, %d items, payment method %s', $order->get_id(), $balance->get_id(), Edit_Orders_For_WooCommerce_Log::money( $balance->get_total(), $balance->get_currency() ), count( $balance->get_items( array( 'line_item', 'fee', 'shipping' ) ) ), '' !== $balance->get_payment_method() ? $balance->get_payment_method() : 'chosen by the customer when paying' ),
+			array(
+				'order'    => $order->get_id(),
+				'balance'  => $balance->get_id(),
+				'total'    => $balance->get_total(),
+				'currency' => $balance->get_currency(),
+			)
+		);
+
 		return $balance;
+	}
+
+	/**
+	 * Continue the run of the change a balance order belongs to. Pass the result to
+	 * Edit_Orders_For_WooCommerce_Log::restore_run() afterwards.
+	 *
+	 * @param WC_Order $balance Balance order.
+	 * @return string The run that was current before.
+	 */
+	private static function continue_run( WC_Order $balance ) {
+		return Edit_Orders_For_WooCommerce_Log::switch_run( (string) $balance->get_meta( Edit_Orders_For_WooCommerce_Log::RUN_META ) );
 	}
 
 	/**
@@ -511,6 +536,10 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		if ( $balance && $balance->get_meta( self::APPLYING_META ) && ! $balance->get_meta( self::APPLIED_META ) ) {
 			$balance->update_meta_data( self::APPLYING_META, time() );
 			$balance->save_meta_data();
+			Edit_Orders_For_WooCommerce_Log::debug(
+				sprintf( 'balance order %d: renewed applying before a refund', $balance->get_id() ),
+				array( 'balance' => $balance->get_id() )
+			);
 		}
 	}
 
@@ -527,10 +556,21 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 			return;
 		}
 
+		$started = (int) $balance->get_meta( self::APPLYING_META );
 		$balance->update_meta_data( self::APPLIED_META, time() );
-		$balance->update_meta_data( self::STUCK_META, (int) $balance->get_meta( self::APPLYING_META ) );
+		$balance->update_meta_data( self::STUCK_META, $started );
 		$balance->delete_meta_data( self::APPLYING_META );
 		$balance->save();
+
+		$run_before = self::continue_run( $balance );
+		Edit_Orders_For_WooCommerce_Log::error(
+			sprintf( 'balance order %d: applying its changes to order %d started at %s and never finished; marked stuck, it will not be applied again', $balance->get_id(), $balance->get_parent_id(), $started ? gmdate( 'Y-m-d H:i:s', $started ) . ' UTC' : 'an unknown time' ),
+			array(
+				'order'      => $balance->get_parent_id(),
+				'balance'    => $balance->get_id(),
+				'started_at' => $started,
+			)
+		);
 
 		$order = wc_get_order( $balance->get_parent_id() );
 		if ( $order ) {
@@ -553,9 +593,12 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 				wc_format_decimal( $balance->get_total(), wc_get_price_decimals() ),
 				0,
 				'',
-				__( 'The customer paid this balance order, but applying the changes it paid for did not finish. Check the original order before refunding.', 'wpheka-edit-orders-for-woocommerce' )
+				__( 'The customer paid this balance order, but applying the changes it paid for did not finish. Check the original order before refunding.', 'wpheka-edit-orders-for-woocommerce' ),
+				'apply_stuck'
 			);
 		}
+
+		Edit_Orders_For_WooCommerce_Log::restore_run( $run_before );
 	}
 
 	/**
@@ -565,6 +608,8 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 	 * applied flag makes the second and third calls do nothing.
 	 *
 	 * @param int $balance_id Order ID.
+	 *
+	 * @throws Throwable An unexpected error, rethrown once it is logged.
 	 */
 	public static function maybe_apply( $balance_id ) {
 		$balance = wc_get_order( $balance_id );
@@ -604,6 +649,16 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$balance->update_meta_data( self::APPLYING_META, time() );
 		$balance->save();
 
+		$run_before = self::continue_run( $balance );
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf( 'balance order %d %s (%s via %s); applying its changes to order %d', $balance->get_id(), $balance->get_date_paid() ? 'paid' : 'to be collected on delivery', Edit_Orders_For_WooCommerce_Log::money( $balance->get_total(), $balance->get_currency() ), '' !== $balance->get_payment_method() ? $balance->get_payment_method() : 'no payment method', $order->get_id() ),
+			array(
+				'order'   => $order->get_id(),
+				'balance' => $balance->get_id(),
+				'gateway' => $balance->get_payment_method(),
+			)
+		);
+
 		// Only the order's current balance applies. One paid after it was cancelled (a slow
 		// gateway or webhook) may have been replaced by a newer change: leave that one waiting
 		// and flag the late payment for a refund.
@@ -611,7 +666,22 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$plan    = Edit_Orders_For_WooCommerce_Settlement_Plan::from_array( $data );
 		$result  = $current ? $plan->still_applies( $order ) : new WP_Error( 'edit_orders_for_woocommerce_balance_superseded', __( 'it was paid after being cancelled', 'wpheka-edit-orders-for-woocommerce' ) );
 		if ( true === $result ) {
-			$result = Edit_Orders_For_WooCommerce_Settlement_Executor::run( $order, $plan, $balance );
+			try {
+				$result = Edit_Orders_For_WooCommerce_Settlement_Executor::run( $order, $plan, $balance );
+			} catch ( Throwable $e ) {
+				// Left "applying": the next look at the order marks it stuck, as before.
+				Edit_Orders_For_WooCommerce_Settlement_Executor::log_exception( 'applying balance order ' . $balance->get_id() . ' to order ' . $order->get_id(), $e, $order->get_id() );
+				throw $e;
+			}
+		} else {
+			Edit_Orders_For_WooCommerce_Log::warning(
+				sprintf( 'balance order %d: its changes no longer apply to order %d: %s (%s)', $balance->get_id(), $order->get_id(), $result->get_error_message(), $result->get_error_code() ),
+				array(
+					'order'   => $order->get_id(),
+					'balance' => $balance->get_id(),
+					'code'    => $result->get_error_code(),
+				)
+			);
 		}
 
 		$balance = wc_get_order( $balance->get_id() );
@@ -628,6 +698,13 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 			$order->delete_meta_data( self::OPEN_BALANCE_META );
 		}
 		if ( $was_stuck ) {
+			Edit_Orders_For_WooCommerce_Log::warning(
+				sprintf( 'balance order %d: applying did finish after all (%s); it had been marked stuck while still running', $balance->get_id(), is_wp_error( $result ) ? 'not applied' : 'applied' ),
+				array(
+					'order'   => $order->get_id(),
+					'balance' => $balance->get_id(),
+				)
+			);
 			$order->add_order_note(
 				sprintf(
 					/* translators: %s: balance order number. */
@@ -669,11 +746,20 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 				0,
 				'',
 				/* translators: %s: reason. */
-				sprintf( __( 'The customer paid this balance order, but the changes it paid for could not be applied: %s. Nothing has been refunded yet.', 'wpheka-edit-orders-for-woocommerce' ), $result->get_error_message() )
+				sprintf( __( 'The customer paid this balance order, but the changes it paid for could not be applied: %s. Nothing has been refunded yet.', 'wpheka-edit-orders-for-woocommerce' ), $result->get_error_message() ),
+				'paid_not_applied'
 			);
 		}
 
 		Edit_Orders_For_WooCommerce_Lock::unclaim( $guard );
+
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf( 'balance order %d: finished for order %d: %s', $balance->get_id(), $order->get_id(), is_wp_error( $result ) ? 'not applied' : 'applied' ),
+			array(
+				'order'   => $order->get_id(),
+				'balance' => $balance->get_id(),
+			)
+		);
 
 		/**
 		 * Fired once when a balance order is paid and its changes are applied.
@@ -685,6 +771,8 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		 * @param array|WP_Error $result  Result of applying the plan.
 		 */
 		do_action( 'edit_orders_for_woocommerce_balance_paid', $balance, $order, $result );
+
+		Edit_Orders_For_WooCommerce_Log::restore_run( $run_before );
 	}
 
 	/**
@@ -700,6 +788,15 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 
 		$order = wc_get_order( $balance->get_parent_id() );
 		if ( $order && (int) $order->get_meta( self::OPEN_BALANCE_META ) === $balance->get_id() ) {
+			$run_before = self::continue_run( $balance );
+			Edit_Orders_For_WooCommerce_Log::info(
+				sprintf( 'balance order %d cancelled; its changes to order %d were not applied', $balance->get_id(), $order->get_id() ),
+				array(
+					'order'   => $order->get_id(),
+					'balance' => $balance->get_id(),
+				)
+			);
+			Edit_Orders_For_WooCommerce_Log::restore_run( $run_before );
 			$order->delete_meta_data( self::OPEN_BALANCE_META );
 			/* translators: %s: balance order number. */
 			$order->add_order_note( sprintf( __( 'Balance order #%s cancelled; the requested changes were not applied.', 'wpheka-edit-orders-for-woocommerce' ), $balance->get_order_number() ) );

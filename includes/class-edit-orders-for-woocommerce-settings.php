@@ -48,6 +48,7 @@ class Edit_Orders_For_WooCommerce_Settings {
 			'cancel_reason_required' => 'no',
 			'cancel_policy'          => '',
 			'note_max_length'        => 500,
+			'debug_log'              => 'no',
 		);
 	}
 

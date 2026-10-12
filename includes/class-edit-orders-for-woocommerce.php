@@ -52,6 +52,7 @@ final class Edit_Orders_For_WooCommerce {
 		$engine = EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/engine/';
 
 		require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/class-edit-orders-for-woocommerce-settings.php';
+		require_once $engine . 'class-edit-orders-for-woocommerce-log.php';
 		require_once $engine . 'class-edit-orders-for-woocommerce-change-set.php';
 		require_once $engine . 'class-edit-orders-for-woocommerce-pricing.php';
 		require_once $engine . 'class-edit-orders-for-woocommerce-eligibility.php';
@@ -71,6 +72,7 @@ final class Edit_Orders_For_WooCommerce {
 		if ( is_admin() ) {
 			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/admin/class-edit-orders-for-woocommerce-admin.php';
 			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/admin/class-edit-orders-for-woocommerce-activity.php';
+			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/admin/class-edit-orders-for-woocommerce-system-status.php';
 		}
 	}
 
@@ -88,6 +90,7 @@ final class Edit_Orders_For_WooCommerce {
 		if ( is_admin() ) {
 			Edit_Orders_For_WooCommerce_Admin::init();
 			Edit_Orders_For_WooCommerce_Activity::init();
+			Edit_Orders_For_WooCommerce_System_Status::init();
 		}
 	}
 

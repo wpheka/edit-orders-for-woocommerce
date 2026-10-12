@@ -32,8 +32,28 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 	 */
 	public static function request( WC_Order $order, $reason, $actor ) {
 		$reason = sanitize_textarea_field( $reason );
+		$mode   = 'instant' === Edit_Orders_For_WooCommerce_Settings::get( 'cancel_mode' ) ? 'instant' : 'approval';
+		$run    = Edit_Orders_For_WooCommerce_Log::start_run();
+		$given  = '' !== trim( $reason ) ? 'yes' : 'no';
+
+		// The reason's text is never logged: only whether there is one.
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf( 'order %d: cancellation requested by %s (%s mode, reason given: %s)', $order->get_id(), Edit_Orders_For_WooCommerce_Log::actor( $actor ), $mode, $given ),
+			array(
+				'order' => $order->get_id(),
+				'actor' => Edit_Orders_For_WooCommerce_Log::actor( $actor ),
+				'mode'  => $mode,
+			)
+		);
 
 		if ( '' === trim( $reason ) && Edit_Orders_For_WooCommerce_Settings::is_on( 'cancel_reason_required' ) ) {
+			Edit_Orders_For_WooCommerce_Log::notice(
+				sprintf( 'order %d: cancellation refused: a reason is required', $order->get_id() ),
+				array(
+					'order' => $order->get_id(),
+					'code'  => 'edit_orders_for_woocommerce_reason',
+				)
+			);
 			return new WP_Error( 'edit_orders_for_woocommerce_reason', __( 'Please tell us why you want to cancel.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
@@ -43,10 +63,11 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 				'reason' => $reason,
 				'actor'  => $actor,
 				'time'   => time(),
+				'run'    => $run,
 			)
 		);
 
-		if ( 'instant' === Edit_Orders_For_WooCommerce_Settings::get( 'cancel_mode' ) ) {
+		if ( 'instant' === $mode ) {
 			$order->save();
 			return self::execute( $order, $actor, $reason );
 		}
@@ -98,21 +119,47 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 	 * @param string   $actor  customer, guest or staff.
 	 * @param string   $reason Reason.
 	 * @return array|WP_Error { status: cancelled, refund, amount, on_delivery }
+	 *
+	 * @throws Throwable An unexpected error, rethrown once it is logged.
 	 */
 	public static function execute( WC_Order $order, $actor, $reason = '' ) {
+		if ( '' === Edit_Orders_For_WooCommerce_Log::run_id() ) {
+			Edit_Orders_For_WooCommerce_Log::start_run();
+		}
+
 		// Two submits at once (a double click, or two tabs) must not both cancel and refund.
 		$guard = 'cancel_' . $order->get_id();
 		if ( ! Edit_Orders_For_WooCommerce_Lock::claim( $guard ) ) {
+			Edit_Orders_For_WooCommerce_Log::notice(
+				sprintf( 'order %d: cancellation refused: another change to this order is running', $order->get_id() ),
+				array(
+					'order' => $order->get_id(),
+					'code'  => 'edit_orders_for_woocommerce_busy',
+				)
+			);
 			return new WP_Error( 'edit_orders_for_woocommerce_busy', __( 'This order is being changed right now. Reload the page and try again.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		$order = wc_get_order( $order->get_id() );
 		if ( $order->has_status( array( 'cancelled', 'refunded' ) ) ) {
 			Edit_Orders_For_WooCommerce_Lock::unclaim( $guard );
+			Edit_Orders_For_WooCommerce_Log::notice(
+				sprintf( 'order %d: cancellation refused: the order is already %s', $order->get_id(), $order->get_status() ),
+				array(
+					'order' => $order->get_id(),
+					'code'  => 'edit_orders_for_woocommerce_already_cancelled',
+				)
+			);
 			return new WP_Error( 'edit_orders_for_woocommerce_already_cancelled', __( 'This order is already cancelled.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
-		$result = self::execute_claimed( $order, $actor, $reason );
+		try {
+			$result = self::execute_claimed( $order, $actor, $reason );
+		} catch ( Throwable $e ) {
+			// The guard stays, as after any crash: it goes stale after a minute.
+			Edit_Orders_For_WooCommerce_Settlement_Executor::log_exception( 'cancelling order ' . $order->get_id(), $e, $order->get_id() );
+			throw $e;
+		}
 		Edit_Orders_For_WooCommerce_Lock::unclaim( $guard );
 
 		return $result;
@@ -151,7 +198,7 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 		$amount = (float) $order->get_remaining_refund_amount();
 
 		if ( ! $on_delivery && $amount > 0 ) {
-			$refund = self::refund_remaining( $order, __( 'Order cancelled', 'wpheka-edit-orders-for-woocommerce' ) );
+			$refund = self::refund_remaining( $order, __( 'Order cancelled', 'wpheka-edit-orders-for-woocommerce' ), $balances['made'] );
 		}
 		$refunded = ( $on_delivery ? 0 : $amount ) + $balance_refunded;
 
@@ -180,6 +227,24 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 			$result['refund']['manual'] = true;
 		}
 
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf(
+				'order %d: cancelled for %s; refund %s%s%s',
+				$order->get_id(),
+				Edit_Orders_For_WooCommerce_Log::actor( $actor ),
+				Edit_Orders_For_WooCommerce_Log::money( $refunded, $order->get_currency() ),
+				! empty( $result['refund']['manual'] ) ? ', a manual refund is needed' : '',
+				$on_delivery ? ', nothing was paid on this order' : ''
+			),
+			array(
+				'order'     => $order->get_id(),
+				'amount'    => $refunded,
+				'currency'  => $order->get_currency(),
+				'manual'    => ! empty( $result['refund']['manual'] ),
+				'refund_id' => is_array( $refund ) && isset( $refund['refund_id'] ) ? (int) $refund['refund_id'] : 0,
+			)
+		);
+
 		/**
 		 * Fired when an order is cancelled through this plugin.
 		 *
@@ -201,9 +266,10 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 	 *
 	 * @param WC_Order $order  Order.
 	 * @param string   $reason Reason shown on the refund.
+	 * @param string[] $made   Refunds already made in this cancellation, for the log.
 	 * @return array|WP_Error Refund result.
 	 */
-	private static function refund_remaining( WC_Order $order, $reason ) {
+	private static function refund_remaining( WC_Order $order, $reason, array $made = array() ) {
 		$amount = (float) $order->get_remaining_refund_amount();
 
 		// Keep the order Cancelled; WooCommerce would switch a fully refunded order to Refunded.
@@ -216,13 +282,23 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 		remove_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
 
 		if ( is_wp_error( $refund ) ) {
+			Edit_Orders_For_WooCommerce_Log::error(
+				sprintf( 'order %d: cancelled, but the refund of %s could not be recorded: %s. Refunds already made in this run: %s', $order->get_id(), Edit_Orders_For_WooCommerce_Log::money( $amount, $order->get_currency() ), Edit_Orders_For_WooCommerce_Log::clip( $refund->get_error_message() ), $made ? implode( '; ', $made ) : 'none' ),
+				array(
+					'order'    => $order->get_id(),
+					'amount'   => $amount,
+					'currency' => $order->get_currency(),
+					'code'     => $refund->get_error_code(),
+				)
+			);
 			Edit_Orders_For_WooCommerce_Refunds::flag_manual_refund(
 				$order,
 				wc_format_decimal( $amount, wc_get_price_decimals() ),
 				0,
 				'',
 				/* translators: %s: error message. */
-				sprintf( __( 'The order was cancelled, but the refund could not be recorded (%s). Nothing has been refunded yet.', 'wpheka-edit-orders-for-woocommerce' ), $refund->get_error_message() )
+				sprintf( __( 'The order was cancelled, but the refund could not be recorded (%s). Nothing has been refunded yet.', 'wpheka-edit-orders-for-woocommerce' ), $refund->get_error_message() ),
+				'cancel_refund_not_recorded'
 			);
 		}
 
@@ -235,12 +311,13 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 	 * A linked pay-on-delivery order is cancelled, so it isn't delivered and collected.
 	 *
 	 * @param WC_Order $order Original order.
-	 * @return array { amount: refunded through paid balance orders, manual: a refund must be made by hand }
+	 * @return array { amount: refunded through paid balance orders, manual: a refund must be made by hand, made: refunds made, for the log }
 	 */
 	private static function close_balance_orders( WC_Order $order ) {
 		$out      = array(
 			'amount' => 0.0,
 			'manual' => false,
+			'made'   => array(),
 		);
 		$balances = wc_get_orders(
 			array(
@@ -256,15 +333,25 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 			}
 
 			$paid = $balance->get_date_paid() && ! Edit_Orders_For_WooCommerce_Eligibility::is_pay_on_delivery( $balance );
+			Edit_Orders_For_WooCommerce_Log::info(
+				sprintf( 'order %d: cancelling balance order %d with it (%s)', $order->get_id(), $balance->get_id(), $paid ? 'paid, so it is refunded too' : 'not paid' ),
+				array(
+					'order'   => $order->get_id(),
+					'balance' => $balance->get_id(),
+				)
+			);
 			$balance->update_status( 'cancelled', __( 'The original order was cancelled.', 'wpheka-edit-orders-for-woocommerce' ) );
 
 			if ( $paid ) {
 				$balance = wc_get_order( $balance->get_id() );
 				$amount  = (float) $balance->get_remaining_refund_amount();
 				if ( $amount > 0 ) {
-					$refund         = self::refund_remaining( $balance, __( 'Original order cancelled', 'wpheka-edit-orders-for-woocommerce' ) );
+					$refund         = self::refund_remaining( $balance, __( 'Original order cancelled', 'wpheka-edit-orders-for-woocommerce' ), $out['made'] );
 					$out['amount'] += $amount;
-					$out['manual']  = $out['manual'] || is_wp_error( $refund ) || ! empty( $refund['manual'] );
+					if ( ! is_wp_error( $refund ) ) {
+						$out['made'][] = Edit_Orders_For_WooCommerce_Log::money( $amount, $balance->get_currency() ) . ' on balance order ' . $balance->get_id();
+					}
+					$out['manual'] = $out['manual'] || is_wp_error( $refund ) || ! empty( $refund['manual'] );
 				}
 			}
 		}
@@ -279,12 +366,21 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 	 * @return array|WP_Error
 	 */
 	public static function approve( WC_Order $order ) {
+		self::continue_run( $order );
 		if ( 'pending' !== $order->get_meta( self::STATUS_META ) ) {
+			Edit_Orders_For_WooCommerce_Log::notice( sprintf( 'order %d: approval refused: no cancellation request is waiting', $order->get_id() ), array( 'order' => $order->get_id() ) );
 			return new WP_Error( 'edit_orders_for_woocommerce_no_request', __( 'There is no cancellation request waiting on this order.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		// The order may have moved on since the customer asked (shipped, refunded or cancelled by hand).
 		if ( ! in_array( $order->get_status(), array( 'pending', 'processing', 'on-hold' ), true ) ) {
+			Edit_Orders_For_WooCommerce_Log::notice(
+				sprintf( 'order %d: cancellation request closed without cancelling: the order is now %s', $order->get_id(), $order->get_status() ),
+				array(
+					'order' => $order->get_id(),
+					'code'  => 'edit_orders_for_woocommerce_request_expired',
+				)
+			);
 			$order->update_meta_data( self::STATUS_META, 'expired' );
 			/* translators: %s: order status. */
 			$order->add_order_note( sprintf( __( 'Cancellation request closed without cancelling: the order is now %s.', 'wpheka-edit-orders-for-woocommerce' ), wc_get_order_status_name( $order->get_status() ) ) );
@@ -298,6 +394,10 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 			);
 		}
 
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf( 'order %d: cancellation approved by %s', $order->get_id(), Edit_Orders_For_WooCommerce_Log::actor( 'staff' ) ),
+			array( 'order' => $order->get_id() )
+		);
 		$request = (array) $order->get_meta( self::REQUEST_META );
 
 		return self::execute( $order, 'staff', isset( $request['reason'] ) ? $request['reason'] : '' );
@@ -311,11 +411,18 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 	 * @return true|WP_Error
 	 */
 	public static function decline( WC_Order $order, $message = '' ) {
+		self::continue_run( $order );
 		if ( 'pending' !== $order->get_meta( self::STATUS_META ) ) {
+			Edit_Orders_For_WooCommerce_Log::notice( sprintf( 'order %d: decline refused: no cancellation request is waiting', $order->get_id() ), array( 'order' => $order->get_id() ) );
 			return new WP_Error( 'edit_orders_for_woocommerce_no_request', __( 'There is no cancellation request waiting on this order.', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
 		$message = sanitize_textarea_field( $message );
+		// The message's text is never logged: only whether there is one.
+		Edit_Orders_For_WooCommerce_Log::info(
+			sprintf( 'order %d: cancellation declined by %s (message for the customer: %s)', $order->get_id(), Edit_Orders_For_WooCommerce_Log::actor( 'staff' ), '' !== $message ? 'yes' : 'no' ),
+			array( 'order' => $order->get_id() )
+		);
 		$order->update_meta_data( self::STATUS_META, 'declined' );
 		$order->add_order_note( __( 'Cancellation request declined.', 'wpheka-edit-orders-for-woocommerce' ) . ( '' !== $message ? ' ' . $message : '' ) );
 		$order->save();
@@ -340,6 +447,18 @@ class Edit_Orders_For_WooCommerce_Cancellation {
 		do_action( 'edit_orders_for_woocommerce_cancel_declined', $order, $message );
 
 		return true;
+	}
+
+	/**
+	 * Continue the run the customer's cancellation request started, so the request and the
+	 * store's answer read as one story in the log. Without one (requests made before 1.1.0)
+	 * a new run starts.
+	 *
+	 * @param WC_Order $order Order.
+	 */
+	private static function continue_run( WC_Order $order ) {
+		$request = (array) $order->get_meta( self::REQUEST_META );
+		Edit_Orders_For_WooCommerce_Log::start_run( isset( $request['run'] ) ? (string) $request['run'] : '' );
 	}
 
 	/**

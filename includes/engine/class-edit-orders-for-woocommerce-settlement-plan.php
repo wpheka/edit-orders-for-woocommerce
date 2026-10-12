@@ -157,6 +157,14 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			$item  = $order->get_item( $change['item_id'] );
 			$check = Edit_Orders_For_WooCommerce_Eligibility::check_item( $order, $item );
 			if ( is_wp_error( $check ) ) {
+				Edit_Orders_For_WooCommerce_Log::debug(
+					sprintf( 'order %d: item %d not editable: %s (%s)', $order->get_id(), (int) $change['item_id'], Edit_Orders_For_WooCommerce_Log::reason( $check ), $check->get_error_code() ),
+					array(
+						'order'   => $order->get_id(),
+						'item_id' => (int) $change['item_id'],
+						'code'    => $check->get_error_code(),
+					)
+				);
 				$plan->errors[] = $check->get_error_message();
 				continue;
 			}

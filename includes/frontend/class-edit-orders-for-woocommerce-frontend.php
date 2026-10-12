@@ -83,6 +83,8 @@ class Edit_Orders_For_WooCommerce_Frontend {
 
 	/**
 	 * Handle a posted customer form.
+	 *
+	 * @throws Throwable An unexpected error, rethrown once it is logged.
 	 */
 	public static function handle_post() {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- verified below before anything is read.
@@ -113,6 +115,14 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		}
 
 		if ( is_wp_error( $actor ) ) {
+			// The code only: never the key that was sent.
+			Edit_Orders_For_WooCommerce_Log::notice(
+				sprintf( 'order %d: customer access refused: %s', $order instanceof WC_Order ? $order->get_id() : 0, $actor->get_error_code() ),
+				array(
+					'order' => $order instanceof WC_Order ? $order->get_id() : 0,
+					'code'  => $actor->get_error_code(),
+				)
+			);
 			$error  = $actor->get_error_data();
 			$status = isset( $error['status'] ) ? (int) $error['status'] : 404;
 			$args   = array( 'response' => $status );
@@ -125,7 +135,12 @@ class Edit_Orders_For_WooCommerce_Frontend {
 			wp_die( esc_html( $actor->get_error_message() ), '', $args ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- an integer HTTP status and a core URL, not output.
 		}
 
-		$result = self::process( $order, $data, $actor );
+		try {
+			$result = self::process( $order, $data, $actor );
+		} catch ( Throwable $e ) {
+			Edit_Orders_For_WooCommerce_Settlement_Executor::log_exception( 'handling a customer request on order ' . $order->get_id(), $e, $order->get_id() );
+			throw $e;
+		}
 
 		if ( ! empty( $result['redirect'] ) ) {
 			wp_safe_redirect( $result['redirect'] );
@@ -155,11 +170,28 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		$action = isset( $data['edit_orders_for_woocommerce_action'] ) ? sanitize_key( $data['edit_orders_for_woocommerce_action'] ) : '';
 
 		if ( ! Edit_Orders_For_WooCommerce_Customer_Rules::count_action( $order ) ) {
+			Edit_Orders_For_WooCommerce_Log::notice(
+				sprintf( 'order %d: %s refused for %s: too many changes in an hour', $order->get_id(), $action, Edit_Orders_For_WooCommerce_Log::actor( $actor ) ),
+				array(
+					'order'  => $order->get_id(),
+					'code'   => 'edit_orders_for_woocommerce_too_many',
+					'action' => $action,
+				)
+			);
 			return self::error( __( 'Too many changes in a short time. Please try again later.', 'wpheka-edit-orders-for-woocommerce' ), $action );
 		}
 
 		$allowed = Edit_Orders_For_WooCommerce_Customer_Rules::can( $order, $action, $actor );
 		if ( is_wp_error( $allowed ) ) {
+			Edit_Orders_For_WooCommerce_Log::debug(
+				sprintf( 'order %d: %s refused for %s: %s (%s)', $order->get_id(), $action, Edit_Orders_For_WooCommerce_Log::actor( $actor ), Edit_Orders_For_WooCommerce_Log::reason( $allowed ), $allowed->get_error_code() ),
+				array(
+					'order'  => $order->get_id(),
+					'code'   => $allowed->get_error_code(),
+					'action' => $action,
+					'actor'  => Edit_Orders_For_WooCommerce_Log::actor( $actor ),
+				)
+			);
 			return self::error( $allowed->get_error_message(), $action );
 		}
 
@@ -249,6 +281,8 @@ class Edit_Orders_For_WooCommerce_Frontend {
 
 			$fields           = $data;
 			$fields['expect'] = $plan->fingerprint();
+			// The confirmed change continues the preview's run in the log.
+			$fields['run'] = Edit_Orders_For_WooCommerce_Log::run_id();
 
 			return array(
 				'type'     => 'preview',
@@ -275,6 +309,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 				'send_pay_link'   => true,
 				// What the customer confirmed must be what gets applied.
 				'expect'          => isset( $data['expect'] ) ? sanitize_key( $data['expect'] ) : '',
+				'run'             => isset( $data['run'] ) ? sanitize_key( $data['run'] ) : '',
 			)
 		);
 		if ( is_wp_error( $result ) ) {
@@ -438,6 +473,18 @@ class Edit_Orders_For_WooCommerce_Frontend {
 		$key   = isset( $_GET['key'] ) ? sanitize_text_field( wp_unslash( $_GET['key'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- the order key is the credential; checked in authorize().
 		$actor = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $order, $key, self::confirmed_email( $order ) );
 		if ( is_wp_error( $actor ) ) {
+			// Only showing a page, so debug: the panel is left out. The code only, never the key.
+			// A balance order never has the panel: its thank-you page is not worth an entry.
+			if ( Edit_Orders_For_WooCommerce_Balance_Orders::is_balance_order( $order ) ) {
+				return;
+			}
+			Edit_Orders_For_WooCommerce_Log::debug(
+				sprintf( 'order %d: edit panel not shown: %s', $order->get_id(), $actor->get_error_code() ),
+				array(
+					'order' => $order->get_id(),
+					'code'  => $actor->get_error_code(),
+				)
+			);
 			return;
 		}
 

@@ -218,6 +218,50 @@ class Edit_Orders_For_WooCommerce_Address_Change {
 			);
 		}
 
+		if ( Edit_Orders_For_WooCommerce_Log::debug_enabled() ) {
+			// Country and state codes only: never the street, city or postcode.
+			$shipping_delta = 0.0;
+			$tax_delta      = 0.0;
+			foreach ( $lines as $line ) {
+				$tax_delta += array_sum( $line['tax_delta'] );
+				if ( $line['is_shipping'] ) {
+					$shipping_delta += $line['ex_delta'];
+				}
+			}
+			$place = static function ( array $address ) {
+				return trim( $address['country'] . '/' . $address['state'], '/' );
+			};
+			Edit_Orders_For_WooCommerce_Log::debug(
+				sprintf(
+					'order %d: address change: shipping %s to %s, billing %s to %s; shipping %s; shipping difference %s, tax difference %s, net %s',
+					$order->get_id(),
+					$place( $old_shipping ),
+					$place( $new_shipping ),
+					$place( $old_billing ),
+					$place( $new_billing ),
+					$new_rate ? 're-rated to ' . $new_rate['method_id'] . ':' . $new_rate['instance_id'] . ' (' . Edit_Orders_For_WooCommerce_Log::money( $new_rate['cost'], $order->get_currency() ) . ')' : 'unchanged',
+					Edit_Orders_For_WooCommerce_Log::money( $shipping_delta, $order->get_currency() ),
+					Edit_Orders_For_WooCommerce_Log::money( $tax_delta, $order->get_currency() ),
+					Edit_Orders_For_WooCommerce_Log::money( $net, $order->get_currency() )
+				),
+				array(
+					'order'          => $order->get_id(),
+					'from'           => array(
+						'shipping' => $place( $old_shipping ),
+						'billing'  => $place( $old_billing ),
+					),
+					'to'             => array(
+						'shipping' => $place( $new_shipping ),
+						'billing'  => $place( $new_billing ),
+					),
+					'rate'           => $new_rate ? $new_rate['method_id'] . ':' . $new_rate['instance_id'] : '',
+					'shipping_delta' => Edit_Orders_For_WooCommerce_Pricing::round( $shipping_delta ),
+					'tax_delta'      => Edit_Orders_For_WooCommerce_Pricing::round( $tax_delta ),
+					'net'            => $net,
+				)
+			);
+		}
+
 		return array(
 			'refund_lines'   => $refund_lines,
 			'balance_items'  => $balance_items,

@@ -335,8 +335,23 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 	 * @param WC_Order $order Order the wrong key was tried on.
 	 */
 	private static function count_failed_key( WC_Order $order ) {
-		foreach ( array( self::failed_key_transient(), self::failed_key_order_transient( $order->get_id() ) ) as $transient ) {
-			set_transient( $transient, (int) get_transient( $transient ) + 1, HOUR_IN_SECONDS );
+		$limits = array(
+			'visitor' => array( self::failed_key_transient(), self::MAX_FAILED_KEYS ),
+			'order'   => array( self::failed_key_order_transient( $order->get_id() ), self::MAX_FAILED_KEYS_PER_ORDER ),
+		);
+		foreach ( $limits as $scope => $limit ) {
+			$count = (int) get_transient( $limit[0] ) + 1;
+			set_transient( $limit[0], $count, HOUR_IN_SECONDS );
+			// Once, when the limit is reached. The visitor's IP is never logged.
+			if ( $count === $limit[1] ) {
+				Edit_Orders_For_WooCommerce_Log::warning(
+					sprintf( 'order %d: wrong-key limit reached (%s, %d wrong keys in an hour); further attempts are refused', $order->get_id(), 'order' === $scope ? 'for this order' : 'for one visitor', $count ),
+					array(
+						'order' => $order->get_id(),
+						'scope' => $scope,
+					)
+				);
+			}
 		}
 	}
 
