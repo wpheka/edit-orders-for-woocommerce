@@ -27,6 +27,52 @@ class Edit_Orders_For_WooCommerce_Pricing {
 	}
 
 	/**
+	 * Does the store round tax at subtotal level (WooCommerce > Settings > Tax)?
+	 *
+	 * WooCommerce then keeps each line's tax unrounded and rounds only the order's
+	 * total, so refunds must do the same or they can differ from what was charged.
+	 *
+	 * @return bool
+	 */
+	public static function rounds_tax_at_subtotal() {
+		return 'yes' === get_option( 'woocommerce_tax_round_at_subtotal' );
+	}
+
+	/**
+	 * Round a tax amount the way WooCommerce stores line tax: to the price decimals,
+	 * or unrounded (WooCommerce's rounding precision) when tax is rounded at subtotal.
+	 *
+	 * @param float|string $amount Amount.
+	 * @return float
+	 */
+	public static function round_tax( $amount ) {
+		if ( self::rounds_tax_at_subtotal() ) {
+			return (float) wc_format_decimal( $amount, wc_get_rounding_precision() );
+		}
+
+		return self::round( $amount );
+	}
+
+	/**
+	 * Total of several refund lines, tax included. With tax rounded at subtotal the
+	 * unrounded amounts are summed and rounded once, as WooCommerce rounds the order
+	 * total; otherwise each line is rounded, as each line was charged.
+	 *
+	 * @param array[] $refund_lines Refund lines.
+	 * @return float
+	 */
+	public static function refund_lines_amount( array $refund_lines ) {
+		$amount = 0.0;
+		foreach ( $refund_lines as $line ) {
+			$amount += self::rounds_tax_at_subtotal()
+				? (float) $line['refund_total'] + array_sum( $line['refund_tax'] )
+				: self::refund_line_amount( $line );
+		}
+
+		return self::round( $amount );
+	}
+
+	/**
 	 * Whether the order is free of tax, decided as WooCommerce decides it when it
 	 * calculates an order's taxes (including the filter tax-exemption plugins use).
 	 *
@@ -79,13 +125,45 @@ class Edit_Orders_For_WooCommerce_Pricing {
 		$share = $quantity / $line_quantity;
 		foreach ( $taxes['total'] as $rate_id => $tax ) {
 			if ( '' !== $tax ) {
-				$refund_tax[ $rate_id ] = self::round( (float) $tax * $share );
+				$refund_tax[ $rate_id ] = self::round_tax( (float) $tax * $share );
 			}
 		}
 
 		return array(
 			'qty'          => (int) $quantity,
 			'refund_total' => self::round( (float) $item->get_total() * $share ),
+			'refund_tax'   => $refund_tax,
+		);
+	}
+
+	/**
+	 * The refund for part of a line paid on a balance order, from what is left of it
+	 * after earlier refunds (see Balance_Orders::line_parts()).
+	 *
+	 * @param array      $part  Part: qty_left, total_left, tax_left.
+	 * @param int        $units Units to take off (product parts).
+	 * @param float|null $share Share of the money to refund instead (fees, or a price
+	 *                          difference on a product part): 0 to 1. Returns no units.
+	 * @return array { qty, refund_total, refund_tax: rate ID => amount }
+	 */
+	public static function refund_for_part( array $part, $units, $share = null ) {
+		$qty = 0;
+		if ( null === $share ) {
+			$left  = (int) $part['qty_left'];
+			$qty   = min( (int) $units, $left );
+			$share = $left > 0 ? $qty / $left : 0;
+		}
+		$share = max( 0.0, min( 1.0, (float) $share ) );
+
+		$refund_tax = array();
+		foreach ( $part['tax_left'] as $rate_id => $tax ) {
+			// Everything that is left: the exact figures, no rounding drift.
+			$refund_tax[ $rate_id ] = $share >= 1.0 ? (float) $tax : self::round_tax( (float) $tax * $share );
+		}
+
+		return array(
+			'qty'          => $qty,
+			'refund_total' => $share >= 1.0 ? (float) $part['total_left'] : self::round( (float) $part['total_left'] * $share ),
 			'refund_tax'   => $refund_tax,
 		);
 	}
@@ -109,7 +187,7 @@ class Edit_Orders_For_WooCommerce_Pricing {
 
 		foreach ( $taxes['total'] as $rate_id => $tax ) {
 			if ( '' !== $tax ) {
-				$refund_tax[ $rate_id ] = self::round( (float) $tax * $share );
+				$refund_tax[ $rate_id ] = self::round_tax( (float) $tax * $share );
 			}
 		}
 

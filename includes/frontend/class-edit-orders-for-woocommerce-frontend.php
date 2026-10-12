@@ -99,14 +99,19 @@ class Edit_Orders_For_WooCommerce_Frontend {
 
 		$data = Edit_Orders_For_WooCommerce::sanitize_request( wp_unslash( $_POST ) );
 
-		if ( Edit_Orders_For_WooCommerce_Customer_Rules::is_rate_limited() ) {
+		$order = wc_get_order( isset( $data['order_id'] ) ? absint( $data['order_id'] ) : 0 );
+		$actor = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $order, isset( $data['order_key'] ) ? $data['order_key'] : '', $order ? self::confirmed_email( $order ) : '' );
+
+		// The wrong-key limit applies only to a wrong or missing key: the order's own customer
+		// and a guest with the right key are never locked out by other visitors' guesses, and a
+		// right key that needs a login or the email confirmed still gets that message.
+		if ( is_wp_error( $actor ) && 'edit_orders_for_woocommerce_not_found' === $actor->get_error_code()
+			&& Edit_Orders_For_WooCommerce_Customer_Rules::is_rate_limited( $order instanceof WC_Order ? $order : null ) ) {
 			status_header( 429 );
 			nocache_headers();
 			wp_die( esc_html__( 'Too many attempts. Please try again later.', 'wpheka-edit-orders-for-woocommerce' ), '', array( 'response' => 429 ) );
 		}
 
-		$order = wc_get_order( isset( $data['order_id'] ) ? absint( $data['order_id'] ) : 0 );
-		$actor = Edit_Orders_For_WooCommerce_Customer_Rules::authorize( $order, isset( $data['order_key'] ) ? $data['order_key'] : '', $order ? self::confirmed_email( $order ) : '' );
 		if ( is_wp_error( $actor ) ) {
 			$error  = $actor->get_error_data();
 			$status = isset( $error['status'] ) ? (int) $error['status'] : 404;
@@ -513,7 +518,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 	 * Variation choices for each line that is a variation: in stock, same product.
 	 *
 	 * @param WC_Order $order Order.
-	 * @return array[] item ID => { name, current, options: variation ID => label }
+	 * @return array[] item ID => { name, quantity, current, options: variation ID => label }
 	 */
 	private static function swap_options( WC_Order $order ) {
 		$options = array();
@@ -527,7 +532,9 @@ class Edit_Orders_For_WooCommerce_Frontend {
 				continue;
 			}
 
-			$choices = array();
+			// Every unit is swapped, the ones paid on balance orders too.
+			$quantity = Edit_Orders_For_WooCommerce_Balance_Orders::effective_quantity( $order, $item );
+			$choices  = array();
 			foreach ( $parent->get_children() as $variation_id ) {
 				$variation = wc_get_product( $variation_id );
 				$current   = (int) $variation_id === (int) $item->get_variation_id();
@@ -535,7 +542,7 @@ class Edit_Orders_For_WooCommerce_Frontend {
 					continue;
 				}
 				// get_children() includes disabled (private) variations: only offer what can be bought.
-				$available = 'publish' === $variation->get_status() && $variation->is_purchasable() && $variation->is_in_stock() && ( ! $variation->managing_stock() || $variation->has_enough_stock( $item->get_quantity() ) );
+				$available = 'publish' === $variation->get_status() && $variation->is_purchasable() && $variation->is_in_stock() && ( ! $variation->managing_stock() || $variation->has_enough_stock( $quantity ) );
 				if ( ! $current && ! $available ) {
 					continue;
 				}
@@ -544,9 +551,10 @@ class Edit_Orders_For_WooCommerce_Frontend {
 
 			if ( count( $choices ) > 1 ) {
 				$options[ $item_id ] = array(
-					'name'    => $parent->get_name(),
-					'current' => (int) $item->get_variation_id(),
-					'options' => $choices,
+					'name'     => $parent->get_name(),
+					'quantity' => $quantity,
+					'current'  => (int) $item->get_variation_id(),
+					'options'  => $choices,
 				);
 			}
 		}

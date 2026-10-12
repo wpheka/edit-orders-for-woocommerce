@@ -26,6 +26,11 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 	const MAX_FAILED_KEYS = 10;
 
 	/**
+	 * Failed key checks allowed per order per hour, from any IP.
+	 */
+	const MAX_FAILED_KEYS_PER_ORDER = 10;
+
+	/**
 	 * Customer actions allowed per order per hour.
 	 */
 	const MAX_ACTIONS = 20;
@@ -244,7 +249,7 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 		// Only a wrong key is a guess. No key at all is a page shown without one (the order
 		// tracking form, another customer's account page): don't count it against the visitor.
 		if ( '' !== $key ) {
-			self::count_failed_key();
+			self::count_failed_key( $order );
 		}
 
 		return $not_found;
@@ -290,12 +295,21 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 	}
 
 	/**
-	 * Has this visitor failed the key check too often?
+	 * Has this visitor failed the key check too often, or has this order had too many
+	 * wrong keys from anywhere (spec 4.2: per IP and per order)?
 	 *
+	 * Checked only after authorize() has refused a request, so the order's own customer
+	 * and a guest with the right key are never locked out by someone else's guesses.
+	 *
+	 * @param WC_Order|null $order Order the request was for, if any.
 	 * @return bool
 	 */
-	public static function is_rate_limited() {
-		return (int) get_transient( self::failed_key_transient() ) >= self::MAX_FAILED_KEYS;
+	public static function is_rate_limited( $order = null ) {
+		if ( (int) get_transient( self::failed_key_transient() ) >= self::MAX_FAILED_KEYS ) {
+			return true;
+		}
+
+		return $order instanceof WC_Order && (int) get_transient( self::failed_key_order_transient( $order->get_id() ) ) >= self::MAX_FAILED_KEYS_PER_ORDER;
 	}
 
 	/**
@@ -316,11 +330,14 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 	}
 
 	/**
-	 * Count a failed key check for this visitor's IP.
+	 * Count a failed key check for this visitor's IP and for the order.
+	 *
+	 * @param WC_Order $order Order the wrong key was tried on.
 	 */
-	private static function count_failed_key() {
-		$transient = self::failed_key_transient();
-		set_transient( $transient, (int) get_transient( $transient ) + 1, HOUR_IN_SECONDS );
+	private static function count_failed_key( WC_Order $order ) {
+		foreach ( array( self::failed_key_transient(), self::failed_key_order_transient( $order->get_id() ) ) as $transient ) {
+			set_transient( $transient, (int) get_transient( $transient ) + 1, HOUR_IN_SECONDS );
+		}
 	}
 
 	/**
@@ -330,5 +347,15 @@ class Edit_Orders_For_WooCommerce_Customer_Rules {
 	 */
 	private static function failed_key_transient() {
 		return 'eofw_badkey_' . md5( WC_Geolocation::get_ip_address() );
+	}
+
+	/**
+	 * Transient name for an order's failed key checks.
+	 *
+	 * @param int $order_id Order ID.
+	 * @return string
+	 */
+	public static function failed_key_order_transient( $order_id ) {
+		return 'eofw_badkey_order_' . absint( $order_id );
 	}
 }

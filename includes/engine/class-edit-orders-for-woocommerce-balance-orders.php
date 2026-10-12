@@ -33,6 +33,21 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 	const APPLIED_META = '_edit_orders_for_woocommerce_applied';
 
 	/**
+	 * Balance order meta: when applying its plan started. Removed once it finished.
+	 */
+	const APPLYING_META = '_edit_orders_for_woocommerce_applying';
+
+	/**
+	 * Balance order meta: applying its plan never finished (fatal error or timeout).
+	 */
+	const STUCK_META = '_edit_orders_for_woocommerce_apply_stuck';
+
+	/**
+	 * Seconds after which an unfinished apply counts as stuck.
+	 */
+	const APPLYING_TIMEOUT = 300;
+
+	/**
 	 * Original order meta: the open balance order's ID.
 	 */
 	const OPEN_BALANCE_META = '_edit_orders_for_woocommerce_open_balance';
@@ -47,6 +62,11 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 	 * Order meta: balance orders whose changes were applied to this order.
 	 */
 	const APPLIED_BALANCES_META = '_edit_orders_for_woocommerce_applied_balances';
+
+	/**
+	 * Balance order item meta: the original order's line this item belongs to.
+	 */
+	const FOR_ITEM_META = '_edit_orders_for_woocommerce_for_item';
 
 	/**
 	 * Statuses in which a balance order is still waiting for payment.
@@ -178,6 +198,10 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 				$item->set_taxes( array( 'total' => $line['taxes'] ) );
 				$explicit_taxes = true;
 			}
+			// Which original line this pays for, so a later edit of that line can refund it.
+			if ( ! empty( $line['for_item'] ) ) {
+				$item->add_meta_data( self::FOR_ITEM_META, absint( $line['for_item'] ), true );
+			}
 			$balance->add_item( $item );
 		}
 
@@ -201,6 +225,83 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$order->save();
 
 		return $balance;
+	}
+
+	/**
+	 * The parts of an original order's line that were paid on its balance orders: extra
+	 * units (product lines) and price differences (fees), with what is left of each after
+	 * any refunds. Newest balance order first, so a decrease takes the last units added.
+	 *
+	 * Balance order items carry FOR_ITEM_META. Items of balance orders made before that
+	 * meta existed are matched to the stored plan's balance items, which were added to the
+	 * balance order in the same order.
+	 *
+	 * @param WC_Order              $order Original order.
+	 * @param WC_Order_Item_Product $item  Line on the original order.
+	 * @return array[] { balance: WC_Order, item: WC_Order_Item, type: product|fee, qty_left, total_left, tax_left: rate ID => amount }
+	 */
+	public static function line_parts( WC_Order $order, WC_Order_Item_Product $item ) {
+		$parts = array();
+
+		foreach ( array_reverse( (array) $order->get_meta( self::APPLIED_BALANCES_META ) ) as $balance_id ) {
+			$balance = wc_get_order( absint( $balance_id ) );
+			if ( ! $balance || ! self::is_balance_order( $balance ) || ! $balance->get_date_paid() ) {
+				continue;
+			}
+
+			$plan  = $balance->get_meta( self::PLAN_META );
+			$lines = is_array( $plan ) && isset( $plan['balance_items'] ) ? array_values( (array) $plan['balance_items'] ) : array();
+			$items = array_values( $balance->get_items( array( 'line_item', 'fee', 'shipping' ) ) );
+			$zip   = count( $lines ) === count( $items );
+
+			foreach ( $items as $index => $part ) {
+				$for = (int) $part->get_meta( self::FOR_ITEM_META );
+				if ( ! $for && $zip && ! empty( $lines[ $index ]['for_item'] ) ) {
+					$for = (int) $lines[ $index ]['for_item'];
+				}
+				if ( $for !== (int) $item->get_id() || ! in_array( $part->get_type(), array( 'line_item', 'fee' ), true ) ) {
+					continue;
+				}
+
+				$type     = $part->get_type();
+				$taxes    = $part->get_taxes();
+				$tax_left = array();
+				foreach ( isset( $taxes['total'] ) ? $taxes['total'] : array() as $rate_id => $tax ) {
+					if ( '' !== $tax ) {
+						$tax_left[ $rate_id ] = (float) $tax - (float) $balance->get_tax_refunded_for_item( $part->get_id(), $rate_id, $type );
+					}
+				}
+
+				$parts[] = array(
+					'balance'    => $balance,
+					'item'       => $part,
+					'type'       => 'line_item' === $type ? 'product' : 'fee',
+					'qty'        => 'line_item' === $type ? (int) $part->get_quantity() : 0,
+					'qty_left'   => 'line_item' === $type ? max( 0, (int) $part->get_quantity() + (int) $balance->get_qty_refunded_for_item( $part->get_id() ) ) : 0,
+					'total_left' => (float) $part->get_total() - (float) $balance->get_total_refunded_for_item( $part->get_id(), $type ),
+					'tax_left'   => $tax_left,
+				);
+			}
+		}
+
+		return $parts;
+	}
+
+	/**
+	 * A line's quantity including the units paid on balance orders and not refunded.
+	 *
+	 * @param WC_Order              $order Original order.
+	 * @param WC_Order_Item_Product $item  Line.
+	 * @param array[]|null          $parts From line_parts(), if already known.
+	 * @return int
+	 */
+	public static function effective_quantity( WC_Order $order, WC_Order_Item_Product $item, $parts = null ) {
+		$quantity = (int) $item->get_quantity();
+		foreach ( null === $parts ? self::line_parts( $order, $item ) : $parts as $part ) {
+			$quantity += (int) $part['qty_left'];
+		}
+
+		return $quantity;
 	}
 
 	/**
@@ -231,10 +332,76 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$balance_id = (int) $order->get_meta( self::OPEN_BALANCE_META );
 		$balance    = $balance_id ? wc_get_order( $balance_id ) : null;
 
-		return $balance
-			&& ! in_array( $balance->get_status(), self::OPEN_STATUSES, true )
-			&& ! $balance->has_status( array( 'cancelled', 'refunded', 'trash' ) )
-			&& ! $balance->get_meta( self::APPLIED_META );
+		if ( ! $balance
+			|| in_array( $balance->get_status(), self::OPEN_STATUSES, true )
+			|| $balance->has_status( array( 'cancelled', 'refunded', 'trash' ) )
+			|| $balance->get_meta( self::APPLIED_META ) ) {
+			return false;
+		}
+
+		// Applying started but never finished: the next look at the order settles it.
+		if ( self::is_stuck( $balance ) ) {
+			self::mark_stuck( $balance );
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Did applying this balance order's plan start and never finish?
+	 *
+	 * @param WC_Order $balance Balance order.
+	 * @return bool
+	 */
+	public static function is_stuck( WC_Order $balance ) {
+		$started = (int) $balance->get_meta( self::APPLYING_META );
+
+		return $started && ! $balance->get_meta( self::APPLIED_META ) && time() - $started > self::APPLYING_TIMEOUT;
+	}
+
+	/**
+	 * Settle a balance order whose plan never finished applying (a fatal error or a
+	 * timeout in the middle): never apply it again, tell the store owner on the original
+	 * order and flag the balance order for a manual refund, as when the plan can't apply.
+	 *
+	 * @param WC_Order $balance Balance order.
+	 */
+	public static function mark_stuck( WC_Order $balance ) {
+		$balance = wc_get_order( $balance->get_id() );
+		if ( ! $balance || $balance->get_meta( self::APPLIED_META ) ) {
+			return;
+		}
+
+		$balance->update_meta_data( self::APPLIED_META, time() );
+		$balance->update_meta_data( self::STUCK_META, (int) $balance->get_meta( self::APPLYING_META ) );
+		$balance->delete_meta_data( self::APPLYING_META );
+		$balance->save();
+
+		$order = wc_get_order( $balance->get_parent_id() );
+		if ( $order ) {
+			if ( (int) $order->get_meta( self::OPEN_BALANCE_META ) === $balance->get_id() ) {
+				$order->delete_meta_data( self::OPEN_BALANCE_META );
+			}
+			$order->add_order_note(
+				sprintf(
+					/* translators: %s: balance order number. */
+					__( 'Balance order #%s was paid, but applying the changes did not finish (the site stopped part way). Check this order against the change, then refund the balance order or make the rest of the change by hand.', 'wpheka-edit-orders-for-woocommerce' ),
+					$balance->get_order_number()
+				)
+			);
+			$order->save();
+		}
+
+		if ( $balance->get_date_paid() ) {
+			Edit_Orders_For_WooCommerce_Refunds::flag_manual_refund(
+				$balance,
+				wc_format_decimal( $balance->get_total(), wc_get_price_decimals() ),
+				0,
+				'',
+				__( 'The customer paid this balance order, but applying the changes it paid for did not finish. Check the original order before refunding.', 'wpheka-edit-orders-for-woocommerce' )
+			);
+		}
 	}
 
 	/**
@@ -251,6 +418,14 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 			return;
 		}
 
+		// Started before and never finished: settle it, never apply twice.
+		if ( $balance->get_meta( self::APPLYING_META ) ) {
+			if ( self::is_stuck( $balance ) ) {
+				self::mark_stuck( $balance );
+			}
+			return;
+		}
+
 		$order = wc_get_order( $balance->get_parent_id() );
 		$data  = $balance->get_meta( self::PLAN_META );
 		if ( ! $order || ! is_array( $data ) ) {
@@ -264,13 +439,15 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 			return;
 		}
 		$balance = wc_get_order( $balance->get_id() );
-		if ( $balance->get_meta( self::APPLIED_META ) ) {
+		if ( $balance->get_meta( self::APPLIED_META ) || $balance->get_meta( self::APPLYING_META ) ) {
 			Edit_Orders_For_WooCommerce_Lock::unclaim( $guard );
 			return;
 		}
 
-		// Mark first, so a status change fired while applying can't apply twice.
-		$balance->update_meta_data( self::APPLIED_META, time() );
+		// "Applying" first, so a status change fired while applying can't apply twice, and
+		// "applied" only once run() has returned: a fatal error or timeout in between leaves
+		// "applying", which the next look at the order settles (see mark_stuck()).
+		$balance->update_meta_data( self::APPLYING_META, time() );
 		$balance->save();
 
 		// Only the order's current balance applies. One paid after it was cancelled (a slow
@@ -282,6 +459,11 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		if ( true === $result ) {
 			$result = Edit_Orders_For_WooCommerce_Settlement_Executor::run( $order, $plan, $balance );
 		}
+
+		$balance = wc_get_order( $balance->get_id() );
+		$balance->update_meta_data( self::APPLIED_META, time() );
+		$balance->delete_meta_data( self::APPLYING_META );
+		$balance->save();
 
 		$order = wc_get_order( $order->get_id() );
 		if ( $current ) {

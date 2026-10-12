@@ -101,21 +101,8 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 			return new WP_Error( 'edit_orders_for_woocommerce_item_refunded', sprintf( __( '"%s" already has a refund, so it can no longer be changed.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name() ) );
 		}
 
-		// Part of this line was paid on a balance order (extra units or a price difference):
-		// changing it here would refund only the original part. Version 1 refuses it.
-		$balance_id = (int) $item->get_meta( Edit_Orders_For_WooCommerce_Balance_Orders::LINE_META );
-		if ( $balance_id ) {
-			$balance = wc_get_order( $balance_id );
-			return new WP_Error(
-				'edit_orders_for_woocommerce_item_balance',
-				sprintf(
-					/* translators: 1: product name, 2: balance order number. */
-					__( 'Part of "%1$s" was paid on balance order #%2$s, so it can no longer be changed here. Refund that part from balance order #%2$s.', 'wpheka-edit-orders-for-woocommerce' ),
-					$item->get_name(),
-					$balance ? $balance->get_order_number() : $balance_id
-				)
-			);
-		}
+		// Units or a price difference paid on a balance order are fine: the plan refunds
+		// and swaps them on that balance order (see Balance_Orders::line_parts()).
 
 		if ( ! $item->get_product() ) {
 			/* translators: %s: product name. */

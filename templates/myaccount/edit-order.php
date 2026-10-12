@@ -17,7 +17,7 @@
  * @var bool       $reason_required A reason must be given.
  * @var string     $policy          Policy note shown with cancellation.
  * @var int        $note_max        Order note length limit.
- * @var array[]    $swap_options    Item ID => { name, current, options }.
+ * @var array[]    $swap_options    Item ID => { name, quantity, current, options }.
  * @var array|null $state           Error or preview from a request on this page; an address
  *                                  error may carry rates (rate ID => label) and fields to re-post.
  * @var string     $message         Success message after a change.
@@ -125,7 +125,7 @@ $edit_orders_for_woocommerce_currency = array( 'currency' => $order->get_currenc
 					<?php echo wp_kses( Edit_Orders_For_WooCommerce_Frontend::form_fields( $order, $order_key, 'swap' ), Edit_Orders_For_WooCommerce_Frontend::FORM_HTML ); ?>
 					<?php foreach ( $swap_options as $edit_orders_for_woocommerce_item_id => $edit_orders_for_woocommerce_line ) : ?>
 						<p>
-							<label for="eofw-swap-<?php echo esc_attr( $edit_orders_for_woocommerce_item_id ); ?>"><?php echo esc_html( $edit_orders_for_woocommerce_line['name'] ); ?></label>
+							<label for="eofw-swap-<?php echo esc_attr( $edit_orders_for_woocommerce_item_id ); ?>"><?php echo esc_html( empty( $edit_orders_for_woocommerce_line['quantity'] ) || 1 === (int) $edit_orders_for_woocommerce_line['quantity'] ? $edit_orders_for_woocommerce_line['name'] : sprintf( /* translators: 1: product name, 2: quantity. */ __( '%1$s &times; %2$d', 'wpheka-edit-orders-for-woocommerce' ), $edit_orders_for_woocommerce_line['name'], (int) $edit_orders_for_woocommerce_line['quantity'] ) ); ?></label>
 							<select id="eofw-swap-<?php echo esc_attr( $edit_orders_for_woocommerce_item_id ); ?>" name="swap[<?php echo esc_attr( $edit_orders_for_woocommerce_item_id ); ?>]">
 								<?php foreach ( $edit_orders_for_woocommerce_line['options'] as $edit_orders_for_woocommerce_variation_id => $edit_orders_for_woocommerce_label ) : ?>
 									<option value="<?php echo esc_attr( $edit_orders_for_woocommerce_variation_id ); ?>" <?php selected( $edit_orders_for_woocommerce_line['current'], (int) $edit_orders_for_woocommerce_variation_id ); ?>><?php echo esc_html( $edit_orders_for_woocommerce_label ); ?></option>

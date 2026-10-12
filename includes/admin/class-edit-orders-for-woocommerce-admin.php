@@ -294,8 +294,9 @@ class Edit_Orders_For_WooCommerce_Admin {
 		foreach ( $order->get_items() as $item_id => $item ) {
 			$check    = Edit_Orders_For_WooCommerce_Eligibility::check_item( $order, $item );
 			$disabled = is_wp_error( $check );
-			$qty      = (int) $item->get_quantity();
-			$each     = $qty ? (float) $item->get_total() / $qty : 0;
+			// Units paid on balance orders count: the customer has them all.
+			$qty  = Edit_Orders_For_WooCommerce_Balance_Orders::effective_quantity( $order, $item );
+			$each = (int) $item->get_quantity() ? (float) $item->get_total() / (int) $item->get_quantity() : 0;
 
 			echo '<tr data-item="' . esc_attr( $item_id ) . '"' . ( $disabled ? ' class="is-locked"' : '' ) . '>';
 			echo '<td>' . esc_html( $item->get_name() );
@@ -432,8 +433,10 @@ class Edit_Orders_For_WooCommerce_Admin {
 			if ( ! $item instanceof WC_Order_Item_Product ) {
 				continue;
 			}
-			// An emptied quantity box means "unchanged", not "remove": 0 removes.
-			$qty       = isset( $fields['qty'] ) && '' !== trim( (string) $fields['qty'] ) ? absint( $fields['qty'] ) : (int) $item->get_quantity();
+			// An emptied quantity box means "unchanged", not "remove": 0 removes. The box shows
+			// the quantity with the units paid on balance orders.
+			$current   = Edit_Orders_For_WooCommerce_Balance_Orders::effective_quantity( $order, $item );
+			$qty       = isset( $fields['qty'] ) && '' !== trim( (string) $fields['qty'] ) ? absint( $fields['qty'] ) : $current;
 			$variation = isset( $fields['variation'] ) ? absint( $fields['variation'] ) : (int) $item->get_variation_id();
 
 			if ( 0 === $qty ) {
@@ -448,7 +451,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 					'item_id'      => $item->get_id(),
 					'variation_id' => $variation,
 				);
-			} elseif ( $qty !== (int) $item->get_quantity() ) {
+			} elseif ( $qty !== $current ) {
 				$changes[] = array(
 					'type'     => 'quantity',
 					'item_id'  => $item->get_id(),
@@ -621,6 +624,25 @@ class Edit_Orders_For_WooCommerce_Admin {
 				continue;
 			}
 			// Same rules as Edit_Orders_For_WooCommerce_Stock::repoint().
+			$old = $item->get_product();
+			if ( (int) $item->get_meta( '_reduced_stock', true ) > 0 && $old && $old->managing_stock() ) {
+				/* translators: 1: quantity, 2: product name. */
+				$lines[] = sprintf( __( '%1$d x %2$s back to stock.', 'wpheka-edit-orders-for-woocommerce' ), (int) $item->get_meta( '_reduced_stock', true ), $item->get_name() );
+			}
+			if ( $variation->managing_stock() ) {
+				/* translators: 1: quantity, 2: product name. */
+				$lines[] = sprintf( __( '%1$d x %2$s taken.', 'wpheka-edit-orders-for-woocommerce' ), (int) $item->get_quantity(), $variation->get_name() );
+			}
+		}
+
+		// The same line's units on balance orders move with it.
+		foreach ( $plan->get_balance_repoints() as $repoint ) {
+			$paid      = wc_get_order( $repoint['balance_id'] );
+			$item      = $paid ? $paid->get_item( $repoint['item_id'] ) : null;
+			$variation = wc_get_product( $repoint['variation_id'] );
+			if ( ! $item instanceof WC_Order_Item_Product || ! $variation || ! $paid->get_order_stock_reduced() ) {
+				continue;
+			}
 			$old = $item->get_product();
 			if ( (int) $item->get_meta( '_reduced_stock', true ) > 0 && $old && $old->managing_stock() ) {
 				/* translators: 1: quantity, 2: product name. */

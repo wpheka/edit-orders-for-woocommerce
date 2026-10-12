@@ -133,7 +133,7 @@ $eo_find_mail = static function ( $subject_part ) {
 
 
 // ---------------------------------------------------------------------------
-WP_CLI::log( 'H1: a line with units or a price difference paid on a balance order is locked' );
+WP_CLI::log( 'H1: a line with units or a price difference paid on a balance order (1.0.1: editable, money tested in m7-deferred)' );
 $eo_order  = $eo_make_order( array( array( 'EO-TSHIRT', 1 ) ) );
 $eo_tshirt = $eo_item_id( $eo_order, 'EO-TSHIRT' );
 $eo_result = Edit_Orders_For_WooCommerce_Settlement_Executor::apply(
@@ -158,7 +158,7 @@ $eo_remove = Edit_Orders_For_WooCommerce_Settlement_Executor::preview(
 		),
 	)
 );
-$eo_check( 'once paid, removing the T-Shirt is refused (2 of its units are on the balance order)', is_wp_error( $eo_remove ) && false !== strpos( $eo_remove->get_error_message(), 'balance order' ), is_wp_error( $eo_remove ) ? $eo_remove->get_error_message() : 'allowed: refund ' . $eo_money( $eo_remove->get_refund_amount() ) );
+$eo_check( 'once paid, removing the T-Shirt is allowed and refunds all 3 units (1.0.1)', ! is_wp_error( $eo_remove ) && '67.80' === $eo_money( $eo_remove->get_refund_amount() ), is_wp_error( $eo_remove ) ? $eo_remove->get_error_message() : $eo_money( $eo_remove->get_refund_amount() ) );
 $eo_address = Edit_Orders_For_WooCommerce_Settlement_Executor::preview(
 	$eo_order,
 	array(
@@ -198,7 +198,7 @@ $eo_remove = Edit_Orders_For_WooCommerce_Settlement_Executor::preview(
 		),
 	)
 );
-$eo_check( 'after a paid dearer swap, removing the hoodie is refused (its price difference is on the balance order)', is_wp_error( $eo_remove ) && false !== strpos( $eo_remove->get_error_message(), 'balance order' ), is_wp_error( $eo_remove ) ? $eo_remove->get_error_message() : 'allowed' );
+$eo_check( 'after a paid dearer swap, removing the hoodie is allowed and refunds the price difference too (1.0.1)', ! is_wp_error( $eo_remove ) && '50.85' === $eo_money( $eo_remove->get_refund_amount() ), is_wp_error( $eo_remove ) ? $eo_remove->get_error_message() : $eo_money( $eo_remove->get_refund_amount() ) );
 $eo_mug = Edit_Orders_For_WooCommerce_Settlement_Executor::preview(
 	$eo_order,
 	array(

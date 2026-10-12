@@ -13,8 +13,11 @@ defined( 'ABSPATH' ) || exit;
  * Built from an order and a change set without writing anything. The plan holds:
  *
  * - refund lines: WooCommerce refund line items (qty, refund_total, refund_tax);
+ * - balance refunds: refund lines on paid balance orders, for the part of a line paid there
+ *   (extra units, a price difference), refunded before the original order;
  * - balance items: product lines and fees for a balance order, when the customer owes more;
- * - repoints: lines to switch to another variation, with no money moving on the line itself.
+ * - repoints: lines to switch to another variation, with no money moving on the line itself,
+ *   and balance repoints for the units of those lines that are on balance orders.
  *
  * A plan is applied atomically. With a balance it waits for that balance to be
  * paid, refunds included, so a customer is never refunded for half of a change
@@ -35,6 +38,35 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	 * @var array[]
 	 */
 	private $refund_lines = array();
+
+	/**
+	 * Refund lines on paid balance orders: balance order ID => item ID => refund line.
+	 *
+	 * @var array[]
+	 */
+	private $balance_refunds = array();
+
+	/**
+	 * What had been refunded on each balance order in balance_refunds when the plan was
+	 * built: balance order ID => amount.
+	 *
+	 * @var float[]
+	 */
+	private $balance_refunded_at_build = array();
+
+	/**
+	 * Balance order lines to switch along with their original line: balance_id, item_id, variation_id.
+	 *
+	 * @var array[]
+	 */
+	private $balance_repoints = array();
+
+	/**
+	 * For the preview: units taken off each original line's balance order parts.
+	 *
+	 * @var int[]
+	 */
+	private $part_units = array();
 
 	/**
 	 * Items for the balance order.
@@ -123,20 +155,27 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 
 			switch ( $change['type'] ) {
 				case 'quantity':
-					$plan->plan_quantity( $item, $change['quantity'] );
+					$plan->plan_quantity( $order, $item, $change['quantity'] );
 					break;
 				case 'remove':
-					$plan->plan_quantity( $item, 0 );
+					$plan->plan_quantity( $order, $item, 0 );
 					break;
 				case 'swap':
-					$plan->plan_swap( $item, $change['variation_id'] );
+					$plan->plan_swap( $order, $item, $change['variation_id'] );
 					break;
 			}
 		}
 
-		// Refunds are capped by WooCommerce; never plan one it would refuse.
-		if ( empty( $plan->errors ) && $plan->get_refund_amount() > (float) $order->get_remaining_refund_amount() ) {
+		// Refunds are capped by WooCommerce, per order; never plan one it would refuse.
+		if ( empty( $plan->errors ) && $plan->get_parent_refund_amount() > (float) $order->get_remaining_refund_amount() + 0.001 ) {
 			$plan->errors[] = __( 'The refund would be more than what is left to refund on this order.', 'wpheka-edit-orders-for-woocommerce' );
+		}
+		foreach ( empty( $plan->errors ) ? $plan->balance_refunds : array() as $balance_id => $lines ) {
+			$balance = wc_get_order( $balance_id );
+			if ( ! $balance || Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines ) > (float) $balance->get_remaining_refund_amount() + 0.001 ) {
+				/* translators: %s: balance order number. */
+				$plan->errors[] = sprintf( __( 'The refund would be more than what is left to refund on balance order #%s.', 'wpheka-edit-orders-for-woocommerce' ), $balance ? $balance->get_order_number() : $balance_id );
+			}
 		}
 
 		/**
@@ -152,21 +191,63 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	}
 
 	/**
+	 * Record a refund line on a paid balance order.
+	 *
+	 * @param array $part Part from Balance_Orders::line_parts().
+	 * @param array $line Refund line.
+	 */
+	private function add_balance_refund( array $part, array $line ) {
+		if ( $line['qty'] <= 0 && Edit_Orders_For_WooCommerce_Pricing::refund_line_amount( $line ) <= 0 ) {
+			return;
+		}
+		$balance_id = $part['balance']->get_id();
+
+		$this->balance_refunds[ $balance_id ][ $part['item']->get_id() ] = $line;
+		if ( ! isset( $this->balance_refunded_at_build[ $balance_id ] ) ) {
+			$this->balance_refunded_at_build[ $balance_id ] = (float) $part['balance']->get_total_refunded();
+		}
+	}
+
+	/**
 	 * Plan a new quantity for a line. Zero removes it.
 	 *
+	 * The quantity counts the units paid on balance orders too. A decrease takes those
+	 * first (newest balance order first), then the original line, and refunds each from
+	 * the order it was paid on. Price differences paid on balance orders are refunded in
+	 * proportion to the units taken off: all of them when the line is removed.
+	 *
+	 * @param WC_Order              $order    Order.
 	 * @param WC_Order_Item_Product $item     Line.
 	 * @param int                   $quantity New quantity.
 	 */
-	private function plan_quantity( WC_Order_Item_Product $item, $quantity ) {
-		$current = (int) $item->get_quantity();
+	private function plan_quantity( WC_Order $order, WC_Order_Item_Product $item, $quantity ) {
+		$parts   = Edit_Orders_For_WooCommerce_Balance_Orders::line_parts( $order, $item );
+		$current = Edit_Orders_For_WooCommerce_Balance_Orders::effective_quantity( $order, $item, $parts );
 
 		if ( $quantity === $current ) {
 			return;
 		}
 
 		if ( $quantity < $current ) {
-			$this->refund_lines[ $item->get_id() ] = Edit_Orders_For_WooCommerce_Pricing::refund_for_quantity( $item, $current - $quantity );
-			$this->descriptions[]                  = 0 === $quantity
+			$take = $current - $quantity;
+			foreach ( $parts as $part ) {
+				if ( 'product' !== $part['type'] || $part['qty_left'] <= 0 || $take <= 0 ) {
+					continue;
+				}
+				$units = min( $take, (int) $part['qty_left'] );
+				$this->add_balance_refund( $part, Edit_Orders_For_WooCommerce_Pricing::refund_for_part( $part, $units ) );
+				$this->part_units[ $item->get_id() ] = ( isset( $this->part_units[ $item->get_id() ] ) ? $this->part_units[ $item->get_id() ] : 0 ) + $units;
+				$take                               -= $units;
+			}
+			if ( $take > 0 ) {
+				$this->refund_lines[ $item->get_id() ] = Edit_Orders_For_WooCommerce_Pricing::refund_for_quantity( $item, $take );
+			}
+			foreach ( $parts as $part ) {
+				if ( 'fee' === $part['type'] ) {
+					$this->add_balance_refund( $part, Edit_Orders_For_WooCommerce_Pricing::refund_for_part( $part, 0, ( $current - $quantity ) / $current ) );
+				}
+			}
+			$this->descriptions[] = 0 === $quantity
 				/* translators: %s: product name. */
 				? sprintf( __( 'Removed "%s".', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name() )
 				/* translators: 1: product name, 2: old quantity, 3: new quantity. */
@@ -184,13 +265,15 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			return;
 		}
 
+		// The paid unit price of the original line.
+		$line_quantity         = max( 1, (int) $item->get_quantity() );
 		$this->balance_items[] = array(
 			'type'       => 'product',
 			'for_item'   => $item->get_id(),
 			'product_id' => $product->get_id(),
 			'quantity'   => $extra,
-			'subtotal'   => Edit_Orders_For_WooCommerce_Pricing::round( (float) $item->get_subtotal() / $current * $extra ),
-			'total'      => Edit_Orders_For_WooCommerce_Pricing::round( (float) $item->get_total() / $current * $extra ),
+			'subtotal'   => Edit_Orders_For_WooCommerce_Pricing::round( (float) $item->get_subtotal() / $line_quantity * $extra ),
+			'total'      => Edit_Orders_For_WooCommerce_Pricing::round( (float) $item->get_total() / $line_quantity * $extra ),
 		);
 		/* translators: 1: product name, 2: old quantity, 3: new quantity. */
 		$this->descriptions[] = sprintf( __( '"%1$s" quantity %2$d to %3$d.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $current, $quantity );
@@ -199,10 +282,14 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	/**
 	 * Plan a swap to another variation of the same product.
 	 *
+	 * Every unit of the line is swapped, the ones paid on balance orders too: those are
+	 * switched on their balance order, and a cheaper variation refunds each order's share.
+	 *
+	 * @param WC_Order              $order        Order.
 	 * @param WC_Order_Item_Product $item         Line.
 	 * @param int                   $variation_id New variation ID.
 	 */
-	private function plan_swap( WC_Order_Item_Product $item, $variation_id ) {
+	private function plan_swap( WC_Order $order, WC_Order_Item_Product $item, $variation_id ) {
 		$new = wc_get_product( $variation_id );
 
 		if ( ! $new || ! $new->is_type( 'variation' ) || (int) $new->get_parent_id() !== (int) $item->get_product_id() ) {
@@ -222,7 +309,17 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			return;
 		}
 
-		$quantity = (int) $item->get_quantity();
+		$parts = Edit_Orders_For_WooCommerce_Balance_Orders::line_parts( $order, $item );
+		foreach ( $parts as $part ) {
+			// Units of a balance order line already partly refunded: their stock can't be moved as a whole.
+			if ( 'product' === $part['type'] && $part['qty_left'] > 0 && $part['qty_left'] < $part['qty'] ) {
+				/* translators: 1: product name, 2: balance order number. */
+				$this->errors[] = sprintf( __( 'Some units of "%1$s" on balance order #%2$s were refunded, so the option can no longer be changed here.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $part['balance']->get_order_number() );
+				return;
+			}
+		}
+
+		$quantity = Edit_Orders_For_WooCommerce_Balance_Orders::effective_quantity( $order, $item, $parts );
 		if ( ! $new->is_in_stock() || ( $new->managing_stock() && ! $new->has_enough_stock( $quantity ) ) ) {
 			/* translators: %s: product name. */
 			$this->errors[] = sprintf( __( '"%s" is out of stock.', 'wpheka-edit-orders-for-woocommerce' ), $new->get_name() );
@@ -244,10 +341,16 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 				'total'     => $difference,
 			);
 		} elseif ( $difference < 0 ) {
-			$line = Edit_Orders_For_WooCommerce_Pricing::refund_for_amount( $item, abs( $difference ) );
+			// Each order refunds the difference for the units it holds.
+			$line = Edit_Orders_For_WooCommerce_Pricing::refund_for_amount( $item, abs( $per_unit ) * (int) $item->get_quantity() );
 			// A line that cost nothing (a 100% coupon) has nothing to refund: no empty refund.
 			if ( Edit_Orders_For_WooCommerce_Pricing::refund_line_amount( $line ) > 0 ) {
 				$this->refund_lines[ $item->get_id() ] = $line;
+			}
+			foreach ( $parts as $part ) {
+				if ( 'product' === $part['type'] && $part['qty_left'] > 0 && $part['total_left'] > 0 ) {
+					$this->add_balance_refund( $part, Edit_Orders_For_WooCommerce_Pricing::refund_for_part( $part, 0, abs( $per_unit ) * $part['qty_left'] / $part['total_left'] ) );
+				}
 			}
 		}
 
@@ -255,6 +358,15 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			'item_id'      => $item->get_id(),
 			'variation_id' => $new->get_id(),
 		);
+		foreach ( $parts as $part ) {
+			if ( 'product' === $part['type'] && $part['qty_left'] > 0 ) {
+				$this->balance_repoints[] = array(
+					'balance_id'   => $part['balance']->get_id(),
+					'item_id'      => $part['item']->get_id(),
+					'variation_id' => $new->get_id(),
+				);
+			}
+		}
 		/* translators: 1: old product name, 2: new product name. */
 		$this->descriptions[] = sprintf( __( 'Swapped "%1$s" for "%2$s".', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $new->get_name() );
 	}
@@ -340,17 +452,44 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	}
 
 	/**
-	 * Total to refund, tax included.
+	 * Total to refund, tax included: on the original order and on its balance orders.
 	 *
 	 * @return float
 	 */
 	public function get_refund_amount() {
-		$amount = 0.0;
-		foreach ( $this->refund_lines as $line ) {
-			$amount += Edit_Orders_For_WooCommerce_Pricing::refund_line_amount( $line );
+		$amount = $this->get_parent_refund_amount();
+		foreach ( $this->balance_refunds as $lines ) {
+			$amount += Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines );
 		}
 
 		return Edit_Orders_For_WooCommerce_Pricing::round( $amount );
+	}
+
+	/**
+	 * Total to refund on the original order, tax included.
+	 *
+	 * @return float
+	 */
+	public function get_parent_refund_amount() {
+		return Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $this->refund_lines );
+	}
+
+	/**
+	 * Refund lines on paid balance orders: balance order ID => item ID => refund line.
+	 *
+	 * @return array[]
+	 */
+	public function get_balance_refunds() {
+		return $this->balance_refunds;
+	}
+
+	/**
+	 * Balance order lines to switch to another variation.
+	 *
+	 * @return array[]
+	 */
+	public function get_balance_repoints() {
+		return $this->balance_repoints;
 	}
 
 	/**
@@ -404,7 +543,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	 * @return bool
 	 */
 	public function has_changes() {
-		return ! empty( $this->refund_lines ) || ! empty( $this->balance_items ) || ! empty( $this->repoints ) || ! empty( $this->address_update );
+		return ! empty( $this->refund_lines ) || ! empty( $this->balance_refunds ) || ! empty( $this->balance_items ) || ! empty( $this->repoints ) || ! empty( $this->address_update );
 	}
 
 	/**
@@ -414,15 +553,18 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	 */
 	public function to_array() {
 		return array(
-			'version'        => 1,
-			'order_id'       => $this->order_id,
-			'refund_lines'   => $this->refund_lines,
-			'balance_items'  => $this->balance_items,
-			'repoints'       => $this->repoints,
-			'address_update' => $this->address_update,
-			'descriptions'   => $this->descriptions,
-			'refunded'       => $this->refunded_at_build,
-			'lines'          => $this->lines_at_build,
+			'version'          => 2,
+			'order_id'         => $this->order_id,
+			'refund_lines'     => $this->refund_lines,
+			'balance_refunds'  => $this->balance_refunds,
+			'balance_refunded' => $this->balance_refunded_at_build,
+			'balance_items'    => $this->balance_items,
+			'repoints'         => $this->repoints,
+			'balance_repoints' => $this->balance_repoints,
+			'address_update'   => $this->address_update,
+			'descriptions'     => $this->descriptions,
+			'refunded'         => $this->refunded_at_build,
+			'lines'            => $this->lines_at_build,
 		);
 	}
 
@@ -468,8 +610,18 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			return new WP_Error( 'edit_orders_for_woocommerce_changed_since', __( 'the original order\'s items, shipping or fees were changed after the change was made', 'wpheka-edit-orders-for-woocommerce' ) );
 		}
 
-		if ( $this->get_refund_amount() > (float) $order->get_remaining_refund_amount() + 0.001 ) {
+		if ( $this->get_parent_refund_amount() > (float) $order->get_remaining_refund_amount() + 0.001 ) {
 			return new WP_Error( 'edit_orders_for_woocommerce_refund_too_big', __( 'the refund is more than what is left to refund on the original order', 'wpheka-edit-orders-for-woocommerce' ) );
+		}
+
+		// Balance orders the plan refunds: refunded by hand in between, the lines may not fit.
+		foreach ( $this->balance_refunds as $balance_id => $lines ) {
+			$balance = wc_get_order( $balance_id );
+			$before  = isset( $this->balance_refunded_at_build[ $balance_id ] ) ? (float) $this->balance_refunded_at_build[ $balance_id ] : null;
+			if ( ! $balance || ( null !== $before && abs( (float) $balance->get_total_refunded() - $before ) > 0.001 )
+				|| Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines ) > (float) $balance->get_remaining_refund_amount() + 0.001 ) {
+				return new WP_Error( 'edit_orders_for_woocommerce_balance_refunded_since', __( 'a balance order for this order was refunded after the change was made', 'wpheka-edit-orders-for-woocommerce' ) );
+			}
 		}
 
 		return true;
@@ -551,12 +703,16 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		}
 
 		foreach ( $order->get_items() as $item_id => $item ) {
-			$before_qty = (int) $item->get_quantity();
+			// The units on balance orders count too: the customer has them all.
+			$before_qty = Edit_Orders_For_WooCommerce_Balance_Orders::effective_quantity( $order, $item );
 			$after_qty  = $before_qty;
 			$after_name = $item->get_name();
 
 			if ( isset( $this->refund_lines[ $item_id ] ) && $this->refund_lines[ $item_id ]['qty'] > 0 ) {
 				$after_qty -= (int) $this->refund_lines[ $item_id ]['qty'];
+			}
+			if ( isset( $this->part_units[ $item_id ] ) ) {
+				$after_qty -= (int) $this->part_units[ $item_id ];
 			}
 			if ( isset( $repoints[ $item_id ] ) && $repoints[ $item_id ] ) {
 				$after_name = $repoints[ $item_id ]->get_name();
@@ -626,13 +782,17 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	 * @return Edit_Orders_For_WooCommerce_Settlement_Plan
 	 */
 	public static function from_array( array $data ) {
-		$plan                 = new self();
-		$plan->order_id       = isset( $data['order_id'] ) ? absint( $data['order_id'] ) : 0;
-		$plan->refund_lines   = isset( $data['refund_lines'] ) ? (array) $data['refund_lines'] : array();
-		$plan->balance_items  = isset( $data['balance_items'] ) ? (array) $data['balance_items'] : array();
-		$plan->repoints       = isset( $data['repoints'] ) ? (array) $data['repoints'] : array();
-		$plan->address_update = isset( $data['address_update'] ) ? (array) $data['address_update'] : array();
-		$plan->descriptions   = isset( $data['descriptions'] ) ? (array) $data['descriptions'] : array();
+		$plan               = new self();
+		$plan->order_id     = isset( $data['order_id'] ) ? absint( $data['order_id'] ) : 0;
+		$plan->refund_lines = isset( $data['refund_lines'] ) ? (array) $data['refund_lines'] : array();
+		// Version 1 plans have no balance refunds or balance repoints.
+		$plan->balance_refunds           = isset( $data['balance_refunds'] ) ? (array) $data['balance_refunds'] : array();
+		$plan->balance_refunded_at_build = isset( $data['balance_refunded'] ) ? array_map( 'floatval', (array) $data['balance_refunded'] ) : array();
+		$plan->balance_repoints          = isset( $data['balance_repoints'] ) ? (array) $data['balance_repoints'] : array();
+		$plan->balance_items             = isset( $data['balance_items'] ) ? (array) $data['balance_items'] : array();
+		$plan->repoints                  = isset( $data['repoints'] ) ? (array) $data['repoints'] : array();
+		$plan->address_update            = isset( $data['address_update'] ) ? (array) $data['address_update'] : array();
+		$plan->descriptions              = isset( $data['descriptions'] ) ? (array) $data['descriptions'] : array();
 		// Plans stored before this was recorded skip the "refunded since" check.
 		$plan->refunded_at_build = isset( $data['refunded'] ) ? (float) $data['refunded'] : null;
 		$plan->lines_at_build    = isset( $data['lines'] ) ? (array) $data['lines'] : null;

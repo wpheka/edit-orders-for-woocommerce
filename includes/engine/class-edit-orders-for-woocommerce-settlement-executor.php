@@ -195,8 +195,39 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 	 * @return array|WP_Error { status, plan, refund }
 	 */
 	public static function run( WC_Order $order, Edit_Orders_For_WooCommerce_Settlement_Plan $plan, $balance = null ) {
-		$refund = null;
-		$notes  = $plan->get_descriptions();
+		$refund          = null;
+		$balance_refunds = array();
+		$notes           = $plan->get_descriptions();
+
+		// Money first. The part of a line paid on a balance order is refunded from that
+		// order, through the gateway it was paid with, before the original order.
+		foreach ( $plan->get_balance_refunds() as $balance_id => $lines ) {
+			$paid = wc_get_order( $balance_id );
+			if ( ! $paid ) {
+				continue;
+			}
+			$done = Edit_Orders_For_WooCommerce_Refunds::refund(
+				$paid,
+				$lines,
+				Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines ),
+				/* translators: %s: original order number. */
+				sprintf( __( 'Order #%s edited', 'wpheka-edit-orders-for-woocommerce' ), $order->get_order_number() )
+			);
+			if ( is_wp_error( $done ) ) {
+				$order = wc_get_order( $order->get_id() );
+				$order->add_order_note(
+					sprintf(
+						/* translators: 1: balance order number, 2: error message. */
+						__( 'Order edit not applied: the refund on balance order #%1$s could not be recorded (%2$s). Refunds already made on other balance orders for this edit stay.', 'wpheka-edit-orders-for-woocommerce' ),
+						$paid->get_order_number(),
+						$done->get_error_message()
+					)
+				);
+				$order->save();
+				return $done;
+			}
+			$balance_refunds[ $balance_id ] = $done;
+		}
 
 		// Money first: if the refund can't even be recorded, nothing else changes.
 		if ( $plan->get_refund_lines() ) {
@@ -211,7 +242,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 			$refund = Edit_Orders_For_WooCommerce_Refunds::refund(
 				$order,
 				$plan->get_refund_lines(),
-				$plan->get_refund_amount(),
+				$plan->get_parent_refund_amount(),
 				__( 'Order edited', 'wpheka-edit-orders-for-woocommerce' )
 			);
 			remove_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
@@ -234,6 +265,20 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 				continue;
 			}
 			$stock_note = Edit_Orders_For_WooCommerce_Stock::repoint( $order, $item, $variation );
+			if ( '' !== $stock_note ) {
+				$notes[] = $stock_note;
+			}
+		}
+
+		// The same line's units on balance orders change with it, with their stock.
+		foreach ( $plan->get_balance_repoints() as $repoint ) {
+			$paid      = wc_get_order( $repoint['balance_id'] );
+			$item      = $paid ? $paid->get_item( $repoint['item_id'] ) : null;
+			$variation = wc_get_product( $repoint['variation_id'] );
+			if ( ! $item instanceof WC_Order_Item_Product || ! $variation ) {
+				continue;
+			}
+			$stock_note = Edit_Orders_For_WooCommerce_Stock::repoint( $paid, $item, $variation );
 			if ( '' !== $stock_note ) {
 				$notes[] = $stock_note;
 			}
@@ -282,10 +327,23 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 		);
 		$order->save();
 
+		// One refund summary for the emails and the activity log: the original order's
+		// refund, or the first balance order's, flagged manual if any of them is.
+		if ( $balance_refunds ) {
+			$summary = is_array( $refund ) ? $refund : reset( $balance_refunds );
+			foreach ( $balance_refunds as $done ) {
+				if ( ! empty( $done['manual'] ) ) {
+					$summary['manual'] = true;
+				}
+			}
+			$refund = $summary;
+		}
+
 		return array(
-			'status' => 'applied',
-			'plan'   => $plan,
-			'refund' => $refund,
+			'status'          => 'applied',
+			'plan'            => $plan,
+			'refund'          => $refund,
+			'balance_refunds' => $balance_refunds,
 		);
 	}
 }
