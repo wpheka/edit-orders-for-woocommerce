@@ -2,7 +2,7 @@
 Contributors: wpheka
 Tags: edit order, change order, cancel order, order editing, woocommerce
 Requires at least: 6.6
-Tested up to: 7.1
+Tested up to: 7.1.3
 Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPLv3 or later
