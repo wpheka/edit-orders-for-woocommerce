@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv3 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: WPHEKA Edit Orders for WooCommerce 1.0.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/edit-orders-for-woocommerce\n"
+"Project-Id-Version: WPHEKA Edit Orders for WooCommerce 1.0.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wpheka-edit-orders-for-woocommerce\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-12T07:40:11+00:00\n"
+"POT-Creation-Date: 2026-10-12T13:08:25+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: wpheka-edit-orders-for-woocommerce\n"
@@ -21,7 +21,7 @@ msgstr ""
 
 #. Plugin URI of the plugin
 #: wpheka-edit-orders-for-woocommerce.php
-msgid "https://github.com/wpheka/edit-orders-for-woocommerce"
+msgid "https://www.wpheka.com/product/edit-orders-for-woocommerce/"
 msgstr ""
 
 #. Description of the plugin
@@ -116,7 +116,7 @@ msgid "Decline"
 msgstr ""
 
 #: includes/admin/class-edit-orders-for-woocommerce-activity.php:195
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:246
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:258
 msgid "Order edited"
 msgstr ""
 
@@ -898,39 +898,49 @@ msgid "Balance for changes to order #%s."
 msgstr ""
 
 #. translators: %s: balance order number.
-#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:389
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:543
 #, php-format
 msgid "Balance order #%s was paid, but applying the changes did not finish (the site stopped part way). Check this order against the change, then refund the balance order or make the rest of the change by hand."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:402
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:556
 msgid "The customer paid this balance order, but applying the changes it paid for did not finish. Check the original order before refunding."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:458
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:612
 msgid "it was paid after being cancelled"
 msgstr ""
 
+#. translators: %s: balance order number.
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:634
+#, php-format
+msgid "Balance order #%s: applying the changes did finish after all. Ignore the earlier note that it did not."
+msgstr ""
+
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:642
+msgid "No manual refund is needed after all: the changes this balance order paid for did finish applying."
+msgstr ""
+
 #. translators: 1: balance order number, 2: reason.
-#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:476
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:650
 #, php-format
 msgid "Balance order #%1$s was paid, but the changes were not applied: %2$s. Refund the balance order or make the change by hand."
 msgstr ""
 
 #. translators: %s: balance order number.
-#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:484
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:658
 #, php-format
 msgid "Balance order #%s paid; changes applied."
 msgstr ""
 
 #. translators: %s: reason.
-#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:497
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:672
 #, php-format
 msgid "The customer paid this balance order, but the changes it paid for could not be applied: %s. Nothing has been refunded yet."
 msgstr ""
 
 #. translators: %s: balance order number.
-#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:530
+#: includes/engine/class-edit-orders-for-woocommerce-balance-orders.php:705
 #, php-format
 msgid "Balance order #%s cancelled; the requested changes were not applied."
 msgstr ""
@@ -1134,8 +1144,14 @@ msgstr ""
 msgid "\"%s\" already has a refund, so it can no longer be changed."
 msgstr ""
 
+#. translators: 1: product name, 2: balance order number.
+#: includes/engine/class-edit-orders-for-woocommerce-eligibility.php:113
+#, php-format
+msgid "Part of \"%1$s\" was paid on balance order #%2$s, so it can no longer be changed here. Refund that part from balance order #%2$s."
+msgstr ""
+
 #. translators: %s: product name.
-#: includes/engine/class-edit-orders-for-woocommerce-eligibility.php:109
+#: includes/engine/class-edit-orders-for-woocommerce-eligibility.php:122
 #, php-format
 msgid "The product for \"%s\" no longer exists."
 msgstr ""
@@ -1185,128 +1201,140 @@ msgid "Changes waiting for payment of balance order #%1$s (%2$s). They apply whe
 msgstr ""
 
 #. translators: %s: original order number.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:214
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:219
 #, php-format
 msgid "Order #%s edited"
 msgstr ""
 
 #. translators: 1: balance order number, 2: error message.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:221
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:226
 #, php-format
-msgid "Order edit not applied: the refund on balance order #%1$s could not be recorded (%2$s). Refunds already made on other balance orders for this edit stay."
+msgid "Order edit not applied: the refund on balance order #%1$s could not be recorded (%2$s)."
 msgstr ""
 
 #. translators: %s: error message.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:253
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:266
 #, php-format
 msgid "Order edit not applied: the refund could not be recorded (%s)."
 msgstr ""
 
 #. translators: %s: balance order number.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:324
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:339
 #, php-format
 msgid "Order edited (paid through balance order #%s):"
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:325
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:340
 msgid "Order edited:"
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:171
+#. translators: 1: amount, 2: order number.
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:382
+#, php-format
+msgid "%1$s on balance order #%2$s"
+msgstr ""
+
+#. translators: %s: list of refunds, such as "$22.60 on balance order #123".
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-executor.php:389
+#, php-format
+msgid "These refunds for this edit were already made and stand: %s. Check them against the order."
+msgstr ""
+
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:183
 msgid "The refund would be more than what is left to refund on this order."
 msgstr ""
 
 #. translators: %s: balance order number.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:177
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:189
 #, php-format
 msgid "The refund would be more than what is left to refund on balance order #%s."
 msgstr ""
 
 #. translators: %s: product name.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:252
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:296
 #, php-format
 msgid "Removed \"%s\"."
 msgstr ""
 
 #. translators: 1: product name, 2: old quantity, 3: new quantity.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:254
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:279
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:298
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:345
 #, php-format
 msgid "\"%1$s\" quantity %2$d to %3$d."
 msgstr ""
 
 #. translators: %s: product name.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:264
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:308
 #, php-format
 msgid "There is not enough stock of \"%s\"."
 msgstr ""
 
 #. translators: %s: product name.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:297
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:364
 #, php-format
 msgid "That option is not a variation of \"%s\"."
 msgstr ""
 
 #. translators: %s: product name.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:308
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:375
 #, php-format
 msgid "\"%s\" is not available."
 msgstr ""
 
 #. translators: 1: product name, 2: balance order number.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:317
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:384
 #, php-format
 msgid "Some units of \"%1$s\" on balance order #%2$s were refunded, so the option can no longer be changed here."
 msgstr ""
 
 #. translators: %s: product name.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:325
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:389
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:392
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:474
 #, php-format
 msgid "\"%s\" is out of stock."
 msgstr ""
 
 #. translators: 1: old product name, 2: new product name.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:338
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:405
 #, php-format
 msgid "Price difference: %1$s to %2$s"
 msgstr ""
 
 #. translators: 1: old product name, 2: new product name.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:371
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:456
 #, php-format
 msgid "Swapped \"%1$s\" for \"%2$s\"."
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:383
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:468
 msgid "Choose a single product or a specific variation to add."
 msgstr ""
 
 #. translators: 1: quantity, 2: product name.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:404
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:489
 #, php-format
 msgid "Added %1$d x \"%2$s\"."
 msgstr ""
 
 #. translators: %s: order status.
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:599
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:708
 #, php-format
 msgid "the original order is now %s"
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:604
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:713
 msgid "the original order was refunded after the change was made"
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:610
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:719
 msgid "the original order's items, shipping or fees were changed after the change was made"
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:614
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:723
 msgid "the refund is more than what is left to refund on the original order"
 msgstr ""
 
-#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:623
+#: includes/engine/class-edit-orders-for-woocommerce-settlement-plan.php:732
 msgid "a balance order for this order was refunded after the change was made"
 msgstr ""
 

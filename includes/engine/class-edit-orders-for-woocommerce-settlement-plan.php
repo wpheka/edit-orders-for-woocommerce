@@ -55,6 +55,14 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	private $balance_refunded_at_build = array();
 
 	/**
+	 * Refunds capped at what is left to refund on an order: order ID => amount. Only for a
+	 * difference of rounding, with tax rounded at subtotal (see cap_rounding()).
+	 *
+	 * @var float[]
+	 */
+	private $refund_caps = array();
+
+	/**
 	 * Balance order lines to switch along with their original line: balance_id, item_id, variation_id.
 	 *
 	 * @var array[]
@@ -166,13 +174,17 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			}
 		}
 
+		if ( empty( $plan->errors ) ) {
+			$plan->cap_rounding( $order );
+		}
+
 		// Refunds are capped by WooCommerce, per order; never plan one it would refuse.
 		if ( empty( $plan->errors ) && $plan->get_parent_refund_amount() > (float) $order->get_remaining_refund_amount() + 0.001 ) {
 			$plan->errors[] = __( 'The refund would be more than what is left to refund on this order.', 'wpheka-edit-orders-for-woocommerce' );
 		}
-		foreach ( empty( $plan->errors ) ? $plan->balance_refunds : array() as $balance_id => $lines ) {
+		foreach ( empty( $plan->errors ) ? array_keys( $plan->balance_refunds ) : array() as $balance_id ) {
 			$balance = wc_get_order( $balance_id );
-			if ( ! $balance || Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines ) > (float) $balance->get_remaining_refund_amount() + 0.001 ) {
+			if ( ! $balance || $plan->get_balance_refund_amount( $balance_id ) > (float) $balance->get_remaining_refund_amount() + 0.001 ) {
 				/* translators: %s: balance order number. */
 				$plan->errors[] = sprintf( __( 'The refund would be more than what is left to refund on balance order #%s.', 'wpheka-edit-orders-for-woocommerce' ), $balance ? $balance->get_order_number() : $balance_id );
 			}
@@ -188,6 +200,38 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		 * @param Edit_Orders_For_WooCommerce_Change_Set      $change_set Change set.
 		 */
 		return apply_filters( 'edit_orders_for_woocommerce_settlement_plan', $plan, $order, $change_set );
+	}
+
+	/**
+	 * With tax rounded at subtotal, WooCommerce rounds each order's tax once, while each
+	 * refund is rounded on its own: the last refunds of an order can come to a cent or so
+	 * more than what is left of it. Cap those at what is left, so the last line can still
+	 * be taken off and nothing more is refunded than was charged. A bigger gap is a real
+	 * one: the plan's own check refuses it.
+	 *
+	 * @param WC_Order $order Original order.
+	 */
+	private function cap_rounding( WC_Order $order ) {
+		if ( ! Edit_Orders_For_WooCommerce_Pricing::rounds_tax_at_subtotal() ) {
+			return;
+		}
+
+		$refunds = array( $order->get_id() => Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $this->refund_lines ) );
+		foreach ( $this->balance_refunds as $balance_id => $lines ) {
+			$refunds[ $balance_id ] = Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines );
+		}
+
+		foreach ( $refunds as $order_id => $amount ) {
+			$target = $order_id === $order->get_id() ? $order : wc_get_order( $order_id );
+			if ( ! $target || $amount <= 0 ) {
+				continue;
+			}
+			$left = (float) $target->get_remaining_refund_amount();
+			$over = $amount - $left;
+			if ( $over > 0.001 && $over <= 0.01 * max( 1, count( $target->get_items( array( 'line_item', 'fee', 'shipping' ) ) ) ) ) {
+				$this->refund_caps[ $order_id ] = $left;
+			}
+		}
 	}
 
 	/**
@@ -275,6 +319,28 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			'subtotal'   => Edit_Orders_For_WooCommerce_Pricing::round( (float) $item->get_subtotal() / $line_quantity * $extra ),
 			'total'      => Edit_Orders_For_WooCommerce_Pricing::round( (float) $item->get_total() / $line_quantity * $extra ),
 		);
+
+		// After a dearer swap every unit has paid the price difference on a balance order: the
+		// extra units pay their share too, as a fee taxed like the one already paid. A later
+		// decrease refunds those fees in proportion to the units taken off.
+		$fees     = 0.0;
+		$fee_part = null;
+		foreach ( $parts as $part ) {
+			if ( 'fee' === $part['type'] && $part['total_left'] > 0 ) {
+				$fees    += (float) $part['total_left'];
+				$fee_part = $fee_part ? $fee_part : $part;
+			}
+		}
+		if ( $fee_part && $current > 0 ) {
+			$this->balance_items[] = array(
+				'type'      => 'fee',
+				'for_item'  => $item->get_id(),
+				'name'      => $fee_part['item']->get_name(),
+				'tax_class' => $fee_part['item']->get_tax_class(),
+				'taxable'   => 'taxable' === $fee_part['item']->get_tax_status(),
+				'total'     => Edit_Orders_For_WooCommerce_Pricing::round( $fees / $current * $extra ),
+			);
+		}
 		/* translators: 1: product name, 2: old quantity, 3: new quantity. */
 		$this->descriptions[] = sprintf( __( '"%1$s" quantity %2$d to %3$d.', 'wpheka-edit-orders-for-woocommerce' ), $item->get_name(), $current, $quantity );
 	}
@@ -283,7 +349,8 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	 * Plan a swap to another variation of the same product.
 	 *
 	 * Every unit of the line is swapped, the ones paid on balance orders too: those are
-	 * switched on their balance order, and a cheaper variation refunds each order's share.
+	 * switched on their balance order. A cheaper variation refunds the price differences
+	 * paid for an earlier, dearer swap first, then each order's share for its units.
 	 *
 	 * @param WC_Order              $order        Order.
 	 * @param WC_Order_Item_Product $item         Line.
@@ -341,15 +408,33 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 				'total'     => $difference,
 			);
 		} elseif ( $difference < 0 ) {
-			// Each order refunds the difference for the units it holds.
-			$line = Edit_Orders_For_WooCommerce_Pricing::refund_for_amount( $item, abs( $per_unit ) * (int) $item->get_quantity() );
-			// A line that cost nothing (a 100% coupon) has nothing to refund: no empty refund.
-			if ( Edit_Orders_For_WooCommerce_Pricing::refund_line_amount( $line ) > 0 ) {
-				$this->refund_lines[ $item->get_id() ] = $line;
-			}
+			// What is owed comes first from price differences paid on balance orders for an
+			// earlier, dearer swap, then from each order for the units it holds.
+			$owed = abs( $per_unit ) * $quantity;
+			$fees = 0.0;
 			foreach ( $parts as $part ) {
-				if ( 'product' === $part['type'] && $part['qty_left'] > 0 && $part['total_left'] > 0 ) {
-					$this->add_balance_refund( $part, Edit_Orders_For_WooCommerce_Pricing::refund_for_part( $part, 0, abs( $per_unit ) * $part['qty_left'] / $part['total_left'] ) );
+				if ( 'fee' === $part['type'] && $part['total_left'] > 0 ) {
+					$fees += (float) $part['total_left'];
+				}
+			}
+			$from_fees = min( $owed, $fees );
+			foreach ( $from_fees > 0 ? $parts : array() as $part ) {
+				if ( 'fee' === $part['type'] && $part['total_left'] > 0 ) {
+					$this->add_balance_refund( $part, Edit_Orders_For_WooCommerce_Pricing::refund_for_part( $part, 0, $from_fees / $fees ) );
+				}
+			}
+
+			$rest = ( $owed - $from_fees ) / max( 1, $quantity );
+			if ( $rest > 0 ) {
+				$line = Edit_Orders_For_WooCommerce_Pricing::refund_for_amount( $item, $rest * (int) $item->get_quantity() );
+				// A line that cost nothing (a 100% coupon) has nothing to refund: no empty refund.
+				if ( Edit_Orders_For_WooCommerce_Pricing::refund_line_amount( $line ) > 0 ) {
+					$this->refund_lines[ $item->get_id() ] = $line;
+				}
+				foreach ( $parts as $part ) {
+					if ( 'product' === $part['type'] && $part['qty_left'] > 0 && $part['total_left'] > 0 ) {
+						$this->add_balance_refund( $part, Edit_Orders_For_WooCommerce_Pricing::refund_for_part( $part, 0, $rest * $part['qty_left'] / $part['total_left'] ) );
+					}
 				}
 			}
 		}
@@ -458,8 +543,8 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	 */
 	public function get_refund_amount() {
 		$amount = $this->get_parent_refund_amount();
-		foreach ( $this->balance_refunds as $lines ) {
-			$amount += Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines );
+		foreach ( array_keys( $this->balance_refunds ) as $balance_id ) {
+			$amount += $this->get_balance_refund_amount( $balance_id );
 		}
 
 		return Edit_Orders_For_WooCommerce_Pricing::round( $amount );
@@ -471,7 +556,30 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 	 * @return float
 	 */
 	public function get_parent_refund_amount() {
-		return Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $this->refund_lines );
+		return $this->capped( $this->order_id, Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $this->refund_lines ) );
+	}
+
+	/**
+	 * Total to refund on one balance order, tax included.
+	 *
+	 * @param int $balance_id Balance order ID.
+	 * @return float
+	 */
+	public function get_balance_refund_amount( $balance_id ) {
+		$lines = isset( $this->balance_refunds[ $balance_id ] ) ? $this->balance_refunds[ $balance_id ] : array();
+
+		return $this->capped( $balance_id, Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines ) );
+	}
+
+	/**
+	 * An order's refund total, within its rounding cap if it has one.
+	 *
+	 * @param int   $order_id Order ID.
+	 * @param float $amount   Amount.
+	 * @return float
+	 */
+	private function capped( $order_id, $amount ) {
+		return isset( $this->refund_caps[ $order_id ] ) ? min( $amount, (float) $this->refund_caps[ $order_id ] ) : $amount;
 	}
 
 	/**
@@ -558,6 +666,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 			'refund_lines'     => $this->refund_lines,
 			'balance_refunds'  => $this->balance_refunds,
 			'balance_refunded' => $this->balance_refunded_at_build,
+			'refund_caps'      => $this->refund_caps,
 			'balance_items'    => $this->balance_items,
 			'repoints'         => $this->repoints,
 			'balance_repoints' => $this->balance_repoints,
@@ -615,11 +724,11 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		}
 
 		// Balance orders the plan refunds: refunded by hand in between, the lines may not fit.
-		foreach ( $this->balance_refunds as $balance_id => $lines ) {
+		foreach ( array_keys( $this->balance_refunds ) as $balance_id ) {
 			$balance = wc_get_order( $balance_id );
 			$before  = isset( $this->balance_refunded_at_build[ $balance_id ] ) ? (float) $this->balance_refunded_at_build[ $balance_id ] : null;
 			if ( ! $balance || ( null !== $before && abs( (float) $balance->get_total_refunded() - $before ) > 0.001 )
-				|| Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines ) > (float) $balance->get_remaining_refund_amount() + 0.001 ) {
+				|| $this->get_balance_refund_amount( $balance_id ) > (float) $balance->get_remaining_refund_amount() + 0.001 ) {
 				return new WP_Error( 'edit_orders_for_woocommerce_balance_refunded_since', __( 'a balance order for this order was refunded after the change was made', 'wpheka-edit-orders-for-woocommerce' ) );
 			}
 		}
@@ -788,6 +897,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Plan {
 		// Version 1 plans have no balance refunds or balance repoints.
 		$plan->balance_refunds           = isset( $data['balance_refunds'] ) ? (array) $data['balance_refunds'] : array();
 		$plan->balance_refunded_at_build = isset( $data['balance_refunded'] ) ? array_map( 'floatval', (array) $data['balance_refunded'] ) : array();
+		$plan->refund_caps               = isset( $data['refund_caps'] ) ? array_map( 'floatval', (array) $data['refund_caps'] ) : array();
 		$plan->balance_repoints          = isset( $data['balance_repoints'] ) ? (array) $data['balance_repoints'] : array();
 		$plan->balance_items             = isset( $data['balance_items'] ) ? (array) $data['balance_items'] : array();
 		$plan->repoints                  = isset( $data['repoints'] ) ? (array) $data['repoints'] : array();

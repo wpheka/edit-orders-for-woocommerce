@@ -4,7 +4,7 @@ Tags: edit order, change order, cancel order, order editing, woocommerce
 Requires at least: 6.6
 Tested up to: 7.1.3
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -12,9 +12,9 @@ Edit WooCommerce orders after payment and settle the difference correctly. Custo
 
 == Description ==
 
-WooCommerce locks an order once it is paid. Changing a size, adding an item or fixing an address then means cancelling, refunding by hand, working out tax and shipping, and sending a new invoice.
+WooCommerce locks an order once it is paid. Changing a size, adding an item or fixing an address then means cancelling, refunding by hand, working out tax and shipping, then sending a new invoice.
 
-**WPHEKA Edit Orders for WooCommerce** lets you edit a paid order in a few clicks, and it handles the money for you:
+**WPHEKA Edit Orders for WooCommerce** lets you edit a paid order in a few clicks and handles the money for you:
 
 * **Order costs less?** It refunds the difference through your payment gateway, with the items put back in stock.
 * **Order costs more?** It creates a small linked order for the difference and emails your customer a link to pay it. The change is made when it is paid; until then the order ships as it was.
@@ -34,7 +34,7 @@ You always see a preview first: what changes, what is refunded, what the custome
 
 Within the time you allow (one hour by default), from the thank-you page, My Account or the link in their order email:
 
-* Cancel the order, with a reason. Cancel straight away with a refund, or send you a request to approve.
+* Cancel the order, with a reason. Cancel straight away with a refund or send you a request to approve.
 * Change the delivery address, with any difference in shipping or tax shown before they confirm
 * Change a size or colour to another option that is in stock
 * Edit their order note
@@ -55,7 +55,7 @@ Seven WooCommerce emails, which you can turn on or off and reword in WooCommerce
 
 = Built for WooCommerce today =
 
-* Works with High-Performance Order Storage (HPOS) on or off, and with the Cart and Checkout blocks
+* Works with High-Performance Order Storage (HPOS) on or off and with the Cart and Checkout blocks
 * Works with classic and block themes
 * Templates and emails can be overridden in your theme; developer hooks are documented
 * No tracking and no notices outside its own screens
@@ -63,7 +63,7 @@ Seven WooCommerce emails, which you can turn on or off and reword in WooCommerce
 == Installation ==
 
 1. Install and activate WooCommerce.
-2. Install "WPHEKA Edit Orders for WooCommerce" from Plugins > Add New, or upload the zip, then activate it.
+2. Install "WPHEKA Edit Orders for WooCommerce" from Plugins > Add New (or upload the zip), then activate it.
 3. Go to WooCommerce > Settings > Edit Orders to choose what customers may change and for how long.
 4. Open any paid Processing or On hold order and use **Edit items or address** in the "Edit order" box.
 
@@ -100,10 +100,23 @@ Your settings and activity log are kept, unless you tick "Delete data on uninsta
 
 == Changelog ==
 
+= 1.0.1 =
+* New: a line with extra units or a price difference paid on a balance order can now be decreased, removed or swapped. The refund includes what was paid on the balance order.
+* Fix: after a swap to a dearer option, extra units now pay the price difference too.
+* Fix: a swap to a cheaper option after a dearer one now refunds the price difference that was paid.
+* Fix: units on an unpaid cash on delivery balance order now count when the line is changed.
+* Fix: with tax rounded at subtotal, refunded tax now matches the tax charged and the last line can always be removed.
+* Fix: if applying a paid change stops part way, it is never applied twice and the order notes say what to check. A slow payment gateway is no longer mistaken for a stop.
+* Fix: wrong order keys are now limited per order as well as per visitor. They never lock out the order's own customer.
+* Tested with WooCommerce 11.2.0.
+
 = 1.0.0 =
 * First release.
 
 == Upgrade Notice ==
+
+= 1.0.1 =
+Edit lines partly paid on a balance order, plus fixes to refund and tax amounts. Recommended for all stores.
 
 = 1.0.0 =
 First release.

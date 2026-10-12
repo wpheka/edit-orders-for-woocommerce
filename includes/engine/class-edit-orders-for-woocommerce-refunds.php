@@ -147,4 +147,24 @@ class Edit_Orders_For_WooCommerce_Refunds {
 		 */
 		do_action( 'edit_orders_for_woocommerce_manual_refund_needed', $order, $amount, $refund_id, $gateway_error, $reason );
 	}
+
+	/**
+	 * Take back a manual refund flagged by mistake, with a note saying why.
+	 *
+	 * @param WC_Order $order  Order.
+	 * @param string   $amount Amount flagged.
+	 * @param string   $note   Why it is not needed.
+	 */
+	public static function clear_manual_refund( WC_Order $order, $amount, $note ) {
+		$order = wc_get_order( $order->get_id() );
+		$left  = (float) $order->get_meta( self::MANUAL_REFUND_META ) - (float) $amount;
+
+		if ( $left > 0.001 ) {
+			$order->update_meta_data( self::MANUAL_REFUND_META, wc_format_decimal( $left, wc_get_price_decimals() ) );
+		} else {
+			$order->delete_meta_data( self::MANUAL_REFUND_META );
+		}
+		$order->add_order_note( $note );
+		$order->save();
+	}
 }

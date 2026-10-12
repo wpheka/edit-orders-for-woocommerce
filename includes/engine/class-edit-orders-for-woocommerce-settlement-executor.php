@@ -197,6 +197,7 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 	public static function run( WC_Order $order, Edit_Orders_For_WooCommerce_Settlement_Plan $plan, $balance = null ) {
 		$refund          = null;
 		$balance_refunds = array();
+		$refunds_made    = array();
 		$notes           = $plan->get_descriptions();
 
 		// Money first. The part of a line paid on a balance order is refunded from that
@@ -206,10 +207,14 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 			if ( ! $paid ) {
 				continue;
 			}
-			$done = Edit_Orders_For_WooCommerce_Refunds::refund(
+			if ( $balance ) {
+				Edit_Orders_For_WooCommerce_Balance_Orders::renew_applying( $balance );
+			}
+			$amount = $plan->get_balance_refund_amount( $balance_id );
+			$done   = Edit_Orders_For_WooCommerce_Refunds::refund(
 				$paid,
 				$lines,
-				Edit_Orders_For_WooCommerce_Pricing::refund_lines_amount( $lines ),
+				$amount,
 				/* translators: %s: original order number. */
 				sprintf( __( 'Order #%s edited', 'wpheka-edit-orders-for-woocommerce' ), $order->get_order_number() )
 			);
@@ -218,15 +223,19 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 				$order->add_order_note(
 					sprintf(
 						/* translators: 1: balance order number, 2: error message. */
-						__( 'Order edit not applied: the refund on balance order #%1$s could not be recorded (%2$s). Refunds already made on other balance orders for this edit stay.', 'wpheka-edit-orders-for-woocommerce' ),
+						__( 'Order edit not applied: the refund on balance order #%1$s could not be recorded (%2$s).', 'wpheka-edit-orders-for-woocommerce' ),
 						$paid->get_order_number(),
 						$done->get_error_message()
-					)
+					) . self::refunds_made_note( $order, $refunds_made )
 				);
 				$order->save();
 				return $done;
 			}
 			$balance_refunds[ $balance_id ] = $done;
+			$refunds_made[]                 = array(
+				'order'  => $paid,
+				'amount' => $amount,
+			);
 		}
 
 		// Money first: if the refund can't even be recorded, nothing else changes.
@@ -239,6 +248,9 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 			if ( $plan->get_balance_items() || $plan->get_repoints() ) {
 				add_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
 			}
+			if ( $balance ) {
+				Edit_Orders_For_WooCommerce_Balance_Orders::renew_applying( $balance );
+			}
 			$refund = Edit_Orders_For_WooCommerce_Refunds::refund(
 				$order,
 				$plan->get_refund_lines(),
@@ -248,10 +260,13 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 			remove_filter( 'woocommerce_order_fully_refunded_status', $keep_status );
 
 			if ( is_wp_error( $refund ) ) {
+				$order = wc_get_order( $order->get_id() );
 				$order->add_order_note(
 					/* translators: %s: error message. */
 					sprintf( __( 'Order edit not applied: the refund could not be recorded (%s).', 'wpheka-edit-orders-for-woocommerce' ), $refund->get_error_message() )
+					. self::refunds_made_note( $order, $refunds_made )
 				);
+				$order->save();
 				return $refund;
 			}
 
@@ -345,5 +360,32 @@ class Edit_Orders_For_WooCommerce_Settlement_Executor {
 			'refund'          => $refund,
 			'balance_refunds' => $balance_refunds,
 		);
+	}
+
+	/**
+	 * For a run that stopped part way: the refunds it already made, which stand, so the
+	 * store owner can check them against the order.
+	 *
+	 * @param WC_Order $order        Original order.
+	 * @param array[]  $refunds_made { order: WC_Order, amount }.
+	 * @return string Empty when none were made, otherwise a sentence starting with a space.
+	 */
+	private static function refunds_made_note( WC_Order $order, array $refunds_made ) {
+		if ( ! $refunds_made ) {
+			return '';
+		}
+
+		$made = array();
+		foreach ( $refunds_made as $done ) {
+			$made[] = sprintf(
+				/* translators: 1: amount, 2: order number. */
+				__( '%1$s on balance order #%2$s', 'wpheka-edit-orders-for-woocommerce' ),
+				wp_strip_all_tags( wc_price( $done['amount'], array( 'currency' => $order->get_currency() ) ) ),
+				$done['order']->get_order_number()
+			);
+		}
+
+		/* translators: %s: list of refunds, such as "$22.60 on balance order #123". */
+		return ' ' . sprintf( __( 'These refunds for this edit were already made and stand: %s. Check them against the order.', 'wpheka-edit-orders-for-woocommerce' ), implode( '; ', $made ) );
 	}
 }

@@ -232,9 +232,11 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 	 * units (product lines) and price differences (fees), with what is left of each after
 	 * any refunds. Newest balance order first, so a decrease takes the last units added.
 	 *
-	 * Balance order items carry FOR_ITEM_META. Items of balance orders made before that
-	 * meta existed are matched to the stored plan's balance items, which were added to the
-	 * balance order in the same order.
+	 * Only balance orders whose items the customer has count: paid ones, and unpaid cash on
+	 * delivery ones (collected with the original order), unless cancelled or refunded.
+	 *
+	 * Balance order items carry FOR_ITEM_META. Items of balance orders made by 1.0.0 are
+	 * matched to the stored plan's balance items (see part_targets()).
 	 *
 	 * @param WC_Order              $order Original order.
 	 * @param WC_Order_Item_Product $item  Line on the original order.
@@ -243,23 +245,14 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 	public static function line_parts( WC_Order $order, WC_Order_Item_Product $item ) {
 		$parts = array();
 
-		foreach ( array_reverse( (array) $order->get_meta( self::APPLIED_BALANCES_META ) ) as $balance_id ) {
-			$balance = wc_get_order( absint( $balance_id ) );
-			if ( ! $balance || ! self::is_balance_order( $balance ) || ! $balance->get_date_paid() ) {
+		foreach ( self::held_balance_orders( $order ) as $balance ) {
+			$targets = self::part_targets( $balance );
+			if ( null === $targets ) {
 				continue;
 			}
 
-			$plan  = $balance->get_meta( self::PLAN_META );
-			$lines = is_array( $plan ) && isset( $plan['balance_items'] ) ? array_values( (array) $plan['balance_items'] ) : array();
-			$items = array_values( $balance->get_items( array( 'line_item', 'fee', 'shipping' ) ) );
-			$zip   = count( $lines ) === count( $items );
-
-			foreach ( $items as $index => $part ) {
-				$for = (int) $part->get_meta( self::FOR_ITEM_META );
-				if ( ! $for && $zip && ! empty( $lines[ $index ]['for_item'] ) ) {
-					$for = (int) $lines[ $index ]['for_item'];
-				}
-				if ( $for !== (int) $item->get_id() || ! in_array( $part->get_type(), array( 'line_item', 'fee' ), true ) ) {
+			foreach ( $balance->get_items( array( 'line_item', 'fee' ) ) as $part_id => $part ) {
+				if ( ! isset( $targets[ $part_id ] ) || $targets[ $part_id ] !== (int) $item->get_id() ) {
 					continue;
 				}
 
@@ -268,7 +261,7 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 				$tax_left = array();
 				foreach ( isset( $taxes['total'] ) ? $taxes['total'] : array() as $rate_id => $tax ) {
 					if ( '' !== $tax ) {
-						$tax_left[ $rate_id ] = (float) $tax - (float) $balance->get_tax_refunded_for_item( $part->get_id(), $rate_id, $type );
+						$tax_left[ $rate_id ] = (float) $tax - self::tax_refunded_for_item( $balance, (int) $part->get_id(), $rate_id, $type );
 					}
 				}
 
@@ -285,6 +278,153 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		}
 
 		return $parts;
+	}
+
+	/**
+	 * The original order's applied balance orders whose items the customer has, newest
+	 * first: paid, or cash on delivery still to be collected. Not cancelled, refunded or
+	 * failed ones: their items are not with the customer, or their money is already back.
+	 *
+	 * @param WC_Order $order Original order.
+	 * @return WC_Order[]
+	 */
+	private static function held_balance_orders( WC_Order $order ) {
+		$held = array();
+		foreach ( array_reverse( (array) $order->get_meta( self::APPLIED_BALANCES_META ) ) as $balance_id ) {
+			$balance = wc_get_order( absint( $balance_id ) );
+			if ( ! $balance || ! self::is_balance_order( $balance ) || $balance->has_status( array( 'cancelled', 'refunded', 'failed', 'trash' ) ) ) {
+				continue;
+			}
+			if ( $balance->get_date_paid() || ( Edit_Orders_For_WooCommerce_Eligibility::is_pay_on_delivery( $balance ) && $balance->has_status( array( 'processing', 'on-hold', 'completed' ) ) ) ) {
+				$held[] = $balance;
+			}
+		}
+
+		return $held;
+	}
+
+	/**
+	 * Which original line each product line and fee of a balance order pays for:
+	 * item ID => original line ID (0 for none, such as an added product).
+	 *
+	 * Balance orders made by 1.0.0 have no FOR_ITEM_META on their items. Their stored plan
+	 * lists the items in the order they were added, but the order returns them grouped by
+	 * type, so each type is matched on its own, in item ID order, and every pair is checked
+	 * (the same product, or the same fee name and amount). When anything doesn't match,
+	 * returns null: the lines the plan names stay refused, as they were in 1.0.0.
+	 *
+	 * @param WC_Order $balance Balance order.
+	 * @return int[]|null
+	 */
+	private static function part_targets( WC_Order $balance ) {
+		$targets = array();
+		$legacy  = array(
+			'line_item' => array(),
+			'fee'       => array(),
+		);
+		foreach ( $balance->get_items( array( 'line_item', 'fee' ) ) as $part_id => $part ) {
+			$for = (int) $part->get_meta( self::FOR_ITEM_META );
+			if ( $for ) {
+				$targets[ $part_id ] = $for;
+			} else {
+				$legacy[ $part->get_type() ][ $part_id ] = $part;
+			}
+		}
+		if ( ! $legacy['line_item'] && ! $legacy['fee'] ) {
+			return $targets;
+		}
+
+		$plan  = $balance->get_meta( self::PLAN_META );
+		$lines = is_array( $plan ) && isset( $plan['balance_items'] ) ? (array) $plan['balance_items'] : array();
+		foreach ( array(
+			'line_item' => 'product',
+			'fee'       => 'fee',
+		) as $type => $line_type ) {
+			$planned = array();
+			foreach ( $lines as $line ) {
+				if ( isset( $line['type'] ) && $line_type === $line['type'] ) {
+					$planned[] = $line;
+				}
+			}
+			$parts = $legacy[ $type ];
+			ksort( $parts );
+			if ( count( $planned ) !== count( $parts ) ) {
+				return null;
+			}
+
+			foreach ( array_values( $parts ) as $index => $part ) {
+				$line = $planned[ $index ];
+				if ( 'product' === $line_type ) {
+					// A later swap may have moved the item to another variation of the same product.
+					$planned_id = isset( $line['product_id'] ) ? (int) $line['product_id'] : 0;
+					$parent_id  = (int) wp_get_post_parent_id( $planned_id );
+					$same       = (int) $part->get_product_id() === ( $parent_id ? $parent_id : $planned_id );
+				} else {
+					$same = isset( $line['name'], $line['total'] ) && (string) $line['name'] === $part->get_name() && abs( (float) $line['total'] - (float) $part->get_total() ) < 0.005;
+				}
+				if ( ! $same ) {
+					return null;
+				}
+				$targets[ $part->get_id() ] = empty( $line['for_item'] ) ? 0 : (int) $line['for_item'];
+			}
+		}
+
+		return $targets;
+	}
+
+	/**
+	 * A balance order the customer has that pays for this line in a way that can't be
+	 * matched to its items (see part_targets()). The line can't be changed then.
+	 *
+	 * @param WC_Order              $order Original order.
+	 * @param WC_Order_Item_Product $item  Line.
+	 * @return WC_Order|null
+	 */
+	public static function unmatched_balance_order( WC_Order $order, WC_Order_Item_Product $item ) {
+		foreach ( self::held_balance_orders( $order ) as $balance ) {
+			if ( null !== self::part_targets( $balance ) ) {
+				continue;
+			}
+			$plan = $balance->get_meta( self::PLAN_META );
+			foreach ( is_array( $plan ) && isset( $plan['balance_items'] ) ? (array) $plan['balance_items'] : array() as $line ) {
+				if ( ! empty( $line['for_item'] ) && (int) $line['for_item'] === (int) $item->get_id() ) {
+					return $balance;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Tax refunded on a balance order item for one rate, as a positive amount.
+	 *
+	 * WooCommerce rounds the sum to cents. With tax rounded at subtotal the refunds store
+	 * unrounded tax, so the rounded sum would leave a fraction of a cent too much or too
+	 * little: sum them as stored then.
+	 *
+	 * @param WC_Order $balance Balance order.
+	 * @param int      $part_id Item ID.
+	 * @param int      $rate_id Tax rate ID.
+	 * @param string   $type    Item type.
+	 * @return float
+	 */
+	private static function tax_refunded_for_item( WC_Order $balance, $part_id, $rate_id, $type ) {
+		if ( ! Edit_Orders_For_WooCommerce_Pricing::rounds_tax_at_subtotal() ) {
+			return (float) $balance->get_tax_refunded_for_item( $part_id, $rate_id, $type );
+		}
+
+		$total = 0.0;
+		foreach ( $balance->get_refunds() as $refund ) {
+			foreach ( $refund->get_items( $type ) as $refunded_item ) {
+				if ( (int) $refunded_item->get_meta( '_refunded_item_id' ) === $part_id ) {
+					$taxes  = $refunded_item->get_taxes();
+					$total += isset( $taxes['total'][ $rate_id ] ) ? (float) $taxes['total'][ $rate_id ] : 0;
+				}
+			}
+		}
+
+		return -1 * $total;
 	}
 
 	/**
@@ -358,6 +498,20 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		$started = (int) $balance->get_meta( self::APPLYING_META );
 
 		return $started && ! $balance->get_meta( self::APPLIED_META ) && time() - $started > self::APPLYING_TIMEOUT;
+	}
+
+	/**
+	 * Renew the "applying" time while a plan runs, before each step that can be slow (a
+	 * gateway refund), so a run that is still working is never taken for one that stopped.
+	 *
+	 * @param WC_Order $balance Balance order being applied.
+	 */
+	public static function renew_applying( WC_Order $balance ) {
+		$balance = wc_get_order( $balance->get_id() );
+		if ( $balance && $balance->get_meta( self::APPLYING_META ) && ! $balance->get_meta( self::APPLIED_META ) ) {
+			$balance->update_meta_data( self::APPLYING_META, time() );
+			$balance->save_meta_data();
+		}
 	}
 
 	/**
@@ -461,13 +615,33 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		}
 
 		$balance = wc_get_order( $balance->get_id() );
+		// Another request took this run for one that had stopped (see mark_stuck()) while it
+		// was still working: it did finish, so put that right below.
+		$was_stuck = (bool) $balance->get_meta( self::STUCK_META );
 		$balance->update_meta_data( self::APPLIED_META, time() );
 		$balance->delete_meta_data( self::APPLYING_META );
+		$balance->delete_meta_data( self::STUCK_META );
 		$balance->save();
 
 		$order = wc_get_order( $order->get_id() );
 		if ( $current ) {
 			$order->delete_meta_data( self::OPEN_BALANCE_META );
+		}
+		if ( $was_stuck ) {
+			$order->add_order_note(
+				sprintf(
+					/* translators: %s: balance order number. */
+					__( 'Balance order #%s: applying the changes did finish after all. Ignore the earlier note that it did not.', 'wpheka-edit-orders-for-woocommerce' ),
+					$balance->get_order_number()
+				)
+			);
+			if ( ! is_wp_error( $result ) && $balance->get_date_paid() ) {
+				Edit_Orders_For_WooCommerce_Refunds::clear_manual_refund(
+					$balance,
+					wc_format_decimal( $balance->get_total(), wc_get_price_decimals() ),
+					__( 'No manual refund is needed after all: the changes this balance order paid for did finish applying.', 'wpheka-edit-orders-for-woocommerce' )
+				);
+			}
 		}
 		if ( is_wp_error( $result ) ) {
 			$order->add_order_note(
@@ -486,8 +660,9 @@ class Edit_Orders_For_WooCommerce_Balance_Orders {
 		}
 		$order->save();
 
-		if ( is_wp_error( $result ) && $balance->get_date_paid() ) {
+		if ( is_wp_error( $result ) && $balance->get_date_paid() && ! $was_stuck ) {
 			// The customer paid for a change that didn't happen: the store owner must refund it.
+			// One marked stuck was flagged already.
 			Edit_Orders_For_WooCommerce_Refunds::flag_manual_refund(
 				$balance,
 				wc_format_decimal( $balance->get_total(), wc_get_price_decimals() ),

@@ -102,7 +102,20 @@ class Edit_Orders_For_WooCommerce_Eligibility {
 		}
 
 		// Units or a price difference paid on a balance order are fine: the plan refunds
-		// and swaps them on that balance order (see Balance_Orders::line_parts()).
+		// and swaps them on that balance order (see Balance_Orders::line_parts()). Unless
+		// that balance order's items can't be told apart (one made by 1.0.0).
+		$balance = Edit_Orders_For_WooCommerce_Balance_Orders::unmatched_balance_order( $order, $item );
+		if ( $balance ) {
+			return new WP_Error(
+				'edit_orders_for_woocommerce_item_balance',
+				sprintf(
+					/* translators: 1: product name, 2: balance order number. */
+					__( 'Part of "%1$s" was paid on balance order #%2$s, so it can no longer be changed here. Refund that part from balance order #%2$s.', 'wpheka-edit-orders-for-woocommerce' ),
+					$item->get_name(),
+					$balance->get_order_number()
+				)
+			);
+		}
 
 		if ( ! $item->get_product() ) {
 			/* translators: %s: product name. */
