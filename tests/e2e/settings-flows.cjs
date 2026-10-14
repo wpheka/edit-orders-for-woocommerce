@@ -98,7 +98,9 @@ function requestFor( qty ) {
 		const cards = await page.locator( '.w-option input[type="checkbox"]' ).evaluateAll( ( els ) => els.map( ( e ) => ( { name: e.name, checked: e.checked } ) ) );
 		await page.locator( '.w-option' ).first().click();
 		for ( const s of switches ) {
-			await page.locator( `input[role="switch"][name="${ s.name }"]` ).click( { force: true } );
+			// A DOM click: the switch's box is invisible, so a forced pointer click lands on
+			// whatever covers it, such as the sticky save bar (missed one on the laptop).
+			await page.locator( `input[role="switch"][name="${ s.name }"]` ).evaluate( ( e ) => e.click() );
 		}
 		await page.fill( 'textarea[name="edit_orders_for_woocommerce_settings[cancel_reasons]"]', 'First reason\nSecond reason' );
 		await save( page );
@@ -112,7 +114,9 @@ function requestFor( qty ) {
 		check( 'a textarea keeps its line breaks', 'First reason\nSecond reason' === ( await page.locator( 'textarea[name="edit_orders_for_woocommerce_settings[cancel_reasons]"]' ).inputValue() ) );
 		// Put everything back through the page.
 		for ( const s of switches ) {
-			await page.locator( `input[role="switch"][name="${ s.name }"]` ).click( { force: true } );
+			// A DOM click: the switch's box is invisible, so a forced pointer click lands on
+			// whatever covers it, such as the sticky save bar (missed one on the laptop).
+			await page.locator( `input[role="switch"][name="${ s.name }"]` ).evaluate( ( e ) => e.click() );
 		}
 		await page.locator( '.w-chip:has(input[value="processing"])' ).click();
 		await page.locator( '.w-option' ).first().click();
@@ -165,8 +169,11 @@ function requestFor( qty ) {
 		wp( 'user meta delete 1 edit_orders_for_woocommerce_start_dismissed' );
 		await page.goto( `${ PAGE }&tab=settings`, { waitUntil: 'networkidle' } );
 		if ( await page.locator( '.w-start' ).count() ) {
-			await page.click( '.w-start .w-close' );
-			await page.waitForTimeout( 800 );
+			// Wait for the dismiss request itself: a fixed wait was too short on a slow host.
+			await Promise.all( [
+				page.waitForResponse( ( r ) => r.url().includes( 'edit_orders_for_woocommerce_dismiss_start' ) ),
+				page.click( '.w-start .w-close' ),
+			] );
 			await page.reload( { waitUntil: 'networkidle' } );
 			check( 'hiding getting started is remembered after a reload', 0 === ( await page.locator( '.w-start' ).count() ) );
 			wp( 'user meta delete 1 edit_orders_for_woocommerce_start_dismissed' );

@@ -4,7 +4,7 @@ Tags: edit order, change order, cancel order, order editing, woocommerce
 Requires at least: 6.6
 Tested up to: 7.1.3
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -108,6 +108,12 @@ The plugin does not write names, emails, phone numbers or addresses to the log. 
 
 == Changelog ==
 
+= 1.2.1 =
+* Fix: on sites in a right-to-left language (such as Arabic or Hebrew) the Edit Orders page sat 20px off the edge of the window and scrolled sideways. The page now mirrors fully: switches, arrows, the save bar and the plugin row.
+* Fix: the "Customers can" option cards now show a focus ring when you reach them with the keyboard.
+* Fix: closing "Getting started" is remembered even if you leave the page straight away.
+* The old WooCommerce > Settings > Edit Orders tab no longer shows an unused Save button.
+
 = 1.2.0 =
 * New: an Edit Orders page under the WPHEKA menu, with Settings, Activity and Help tabs. It replaces WooCommerce > Edit Orders. The settings moved here from WooCommerce > Settings > Edit Orders, which now links to the new page. Your settings are kept as they are.
 * New: the last 30 days at a glance: orders edited, amount refunded, pay links sent and paid. It also counts the changes customers made themselves.
@@ -137,6 +143,9 @@ The plugin does not write names, emails, phone numbers or addresses to the log. 
 * First release.
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+Fixes the Edit Orders page on right-to-left sites and adds a keyboard focus ring to the option cards.
 
 = 1.2.0 =
 A redesigned Edit Orders page under the WPHEKA menu. Settings moved there and are kept as they are.

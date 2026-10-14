@@ -145,7 +145,7 @@ class Fields {
 	/**
 	 * Chips: a multiple choice shown as toggle pills.
 	 *
-	 * @param array $a { name (without []), options value => label, selected [], label, help }.
+	 * @param array $a { name (without []), options value => label, selected [], label, help, search (placeholder of a box that narrows a long list; the list then scrolls) }.
 	 */
 	public static function chips_row( array $a ) {
 		$a  = wp_parse_args(
@@ -156,11 +156,16 @@ class Fields {
 				'selected' => array(),
 				'label'    => '',
 				'help'     => '',
+				'search'   => '',
 			)
 		);
 		$id = self::id();
 		echo '<div class="w-row w-row--stack">' . self::head( $a['label'], $a['help'], '' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in head().
-		echo '<div class="w-chips" role="group" aria-label="' . esc_attr( $a['label'] ) . '" id="' . esc_attr( $id ) . '">';
+		if ( $a['search'] ) {
+			// No name, so it never posts; data-w-nodirty keeps typing in it from showing the save bar.
+			echo '<div class="w-find w-chips-find">' . Icons::get( 'search', '2' ) . '<input type="search" placeholder="' . esc_attr( $a['search'] ) . '" aria-label="' . esc_attr( $a['search'] ) . '" aria-controls="' . esc_attr( $id ) . '" data-w-chipfind="' . esc_attr( $id ) . '" data-w-nodirty></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- icon is static SVG.
+		}
+		echo '<div class="w-chips' . ( $a['search'] ? ' w-chips--scroll' : '' ) . '" role="group" aria-label="' . esc_attr( $a['label'] ) . '" id="' . esc_attr( $id ) . '">';
 		// An empty list still posts, so clearing every chip is saved.
 		echo '<input type="hidden" name="' . esc_attr( $a['name'] ) . '[]" value="">';
 		foreach ( $a['options'] as $value => $text ) {

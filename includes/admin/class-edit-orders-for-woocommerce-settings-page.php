@@ -38,6 +38,8 @@ class Edit_Orders_For_WooCommerce_Settings_Page extends WC_Settings_Page {
 	 * Say where the settings went, with a link.
 	 */
 	public function output() {
+		// Nothing to save here, so WooCommerce's Save button would only show disabled.
+		$GLOBALS['hide_save_button'] = true; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- WooCommerce's own switch for its Save button; the name is WooCommerce's.
 		echo '<div class="notice notice-info inline edit-orders-moved"><p><strong>' . esc_html__( 'Edit Orders settings have moved.', 'wpheka-edit-orders-for-woocommerce' ) . '</strong> ' . esc_html__( 'Find them, with the activity log, under WPHEKA > Edit Orders.', 'wpheka-edit-orders-for-woocommerce' ) . '</p>';
 		echo '<p><a class="button button-primary" href="' . esc_url( Edit_Orders_For_WooCommerce_Admin_Page::url( 'settings' ) ) . '">' . esc_html__( 'Open Edit Orders settings', 'wpheka-edit-orders-for-woocommerce' ) . '</a></p></div>';
 	}

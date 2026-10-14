@@ -29,6 +29,7 @@
 
 	function init( ui ) {
 		form( ui );
+		chipfind( ui );
 		subs( ui );
 		units( ui );
 		scrollspy( ui );
@@ -58,8 +59,17 @@
 			dirty = false;
 			bar.classList.remove( 'is-shown' );
 		}
-		f.addEventListener( 'input', show );
-		f.addEventListener( 'change', show );
+		// Fields owned by another form (an add-on's own form="" box) or marked
+		// data-w-nodirty (a search box) are not settings, so they do not count.
+		function changed( e ) {
+			var t = e.target;
+			if ( ( t.form && t.form !== f ) || ( t.hasAttribute && t.hasAttribute( 'data-w-nodirty' ) ) ) {
+				return;
+			}
+			show();
+		}
+		f.addEventListener( 'input', changed );
+		f.addEventListener( 'change', changed );
 		f.addEventListener( 'submit', function () {
 			submitting = true;
 		} );
@@ -93,6 +103,29 @@
 					f.submit();
 				}
 			}
+		} );
+	}
+
+	// A box that narrows a long list of chips. Ticked chips always stay in view.
+	function chipfind( ui ) {
+		$$( '[data-w-chipfind]', ui ).forEach( function ( box ) {
+			var list = document.getElementById( box.getAttribute( 'data-w-chipfind' ) );
+			if ( ! list ) {
+				return;
+			}
+			box.addEventListener( 'input', function () {
+				var q = box.value.trim().toLowerCase();
+				$$( '.w-chip', list ).forEach( function ( chip ) {
+					var input = $( 'input', chip );
+					chip.hidden = !! q && ! input.checked && -1 === chip.textContent.toLowerCase().indexOf( q );
+				} );
+			} );
+			// Enter in the box would submit the settings form.
+			box.addEventListener( 'keydown', function ( e ) {
+				if ( 'Enter' === e.key ) {
+					e.preventDefault();
+				}
+			} );
 		} );
 	}
 
@@ -235,17 +268,22 @@
 		var prev = $( '[data-w-prev]', ui );
 		var next = $( '[data-w-next]', ui );
 		var dots = $( '[data-w-dots]', ui );
+		// Right to left, scrollLeft runs from 0 down to negative numbers.
+		function rtl() {
+			return 'rtl' === window.getComputedStyle( track ).direction;
+		}
 		function update() {
 			var max = track.scrollWidth - track.clientWidth - 2;
+			var pos = Math.abs( track.scrollLeft );
 			if ( prev ) {
-				prev.disabled = track.scrollLeft <= 2;
+				prev.disabled = pos <= 2;
 			}
 			if ( next ) {
-				next.disabled = track.scrollLeft >= max;
+				next.disabled = pos >= max;
 			}
 			if ( dots ) {
 				var n = Math.max( 1, Math.round( track.scrollWidth / track.clientWidth ) );
-				var at = max <= 0 ? 0 : Math.round( ( track.scrollLeft / max ) * ( n - 1 ) );
+				var at = max <= 0 ? 0 : Math.round( ( pos / max ) * ( n - 1 ) );
 				if ( dots.children.length !== n ) {
 					dots.innerHTML = new Array( n + 1 ).join( '<span></span>' );
 				}
@@ -256,7 +294,7 @@
 			}
 		}
 		function step( dir ) {
-			track.scrollBy( { left: dir * ( track.clientWidth + 16 ), behavior: 'smooth' } );
+			track.scrollBy( { left: ( rtl() ? -dir : dir ) * ( track.clientWidth + 16 ), behavior: 'smooth' } );
 		}
 		if ( prev ) {
 			prev.addEventListener( 'click', function () {
@@ -289,7 +327,8 @@
 				}
 				e.preventDefault();
 				target.remove();
-				window.fetch( a.href, { credentials: 'same-origin' } );
+				// keepalive: the request finishes even if the page is left straight away.
+				window.fetch( a.href, { credentials: 'same-origin', keepalive: true } );
 			} );
 		} );
 	}

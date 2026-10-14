@@ -114,8 +114,16 @@ async function save( page ) {
 
 		await page.goto( `${ BASE }/wp-admin/admin.php?page=wc-settings&tab=edit_orders`, { waitUntil: 'networkidle' } );
 		check( 'the old WooCommerce tab points to the new page', 1 === ( await page.locator( '.edit-orders-moved' ).count() ) );
+		check( 'the old WooCommerce tab has no Save button', 0 === ( await page.locator( '#mainform button[name="save"]' ).count() ) );
 		await Promise.all( [ page.waitForNavigation(), page.click( '.edit-orders-moved a' ) ] );
 		check( 'its button opens Settings', page.url().includes( 'page=edit-orders-for-woocommerce' ) && page.url().includes( 'tab=settings' ) );
+
+		// Keyboard focus on an option card shows the violet ring (missing in 1.2.0, found on the laptop).
+		await page.keyboard.press( 'Shift' );
+		await page.locator( '.w-option input[type="checkbox"]' ).first().focus();
+		await page.waitForTimeout( 350 );
+		const ring = await page.locator( '.w-option' ).first().evaluate( ( e ) => getComputedStyle( e ).boxShadow );
+		check( 'an option card shows the focus ring from the keyboard', /124, 58, 237/.test( ring ), ring );
 
 		for ( const tab of [ 'activity', 'help' ] ) {
 			await page.goto( `${ PAGE }&tab=${ tab }`, { waitUntil: 'networkidle' } );
