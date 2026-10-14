@@ -72,6 +72,9 @@ final class Edit_Orders_For_WooCommerce {
 		if ( is_admin() ) {
 			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/admin/class-edit-orders-for-woocommerce-admin.php';
 			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/admin/class-edit-orders-for-woocommerce-activity.php';
+			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/wpheka-ui/load.php';
+			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/admin/class-edit-orders-for-woocommerce-settings-form.php';
+			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/admin/class-edit-orders-for-woocommerce-admin-page.php';
 			require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/admin/class-edit-orders-for-woocommerce-system-status.php';
 		}
 	}
@@ -90,6 +93,7 @@ final class Edit_Orders_For_WooCommerce {
 		if ( is_admin() ) {
 			Edit_Orders_For_WooCommerce_Admin::init();
 			Edit_Orders_For_WooCommerce_Activity::init();
+			Edit_Orders_For_WooCommerce_Admin_Page::init();
 			Edit_Orders_For_WooCommerce_System_Status::init();
 		}
 	}

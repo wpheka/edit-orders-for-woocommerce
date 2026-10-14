@@ -3,7 +3,7 @@
  * Plugin Name: WPHEKA Edit Orders for WooCommerce
  * Plugin URI: https://www.wpheka.com/product/edit-orders-for-woocommerce/
  * Description: Edit WooCommerce orders after payment and settle the difference correctly: refunds for decreases, a pay link for increases.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: WPHEKA
  * Author URI: https://www.wpheka.com/
  * Text Domain: wpheka-edit-orders-for-woocommerce
@@ -12,7 +12,7 @@
  * Requires PHP: 7.4
  * Requires Plugins: woocommerce
  * WC requires at least: 9.0
- * WC tested up to: 11.2.0
+ * WC tested up to: 11.2.1
  * License: GPLv3 or later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  *
@@ -21,7 +21,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'EDIT_ORDERS_FOR_WOOCOMMERCE_VERSION', '1.1.0' );
+define( 'EDIT_ORDERS_FOR_WOOCOMMERCE_VERSION', '1.2.0' );
 define( 'EDIT_ORDERS_FOR_WOOCOMMERCE_FILE', __FILE__ );
 define( 'EDIT_ORDERS_FOR_WOOCOMMERCE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'EDIT_ORDERS_FOR_WOOCOMMERCE_URL', plugin_dir_url( __FILE__ ) );

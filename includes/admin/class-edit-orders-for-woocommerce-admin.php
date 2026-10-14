@@ -66,7 +66,7 @@ class Edit_Orders_For_WooCommerce_Admin {
 	 * @return string[]
 	 */
 	public static function plugin_links( $links ) {
-		array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=edit_orders' ) ) . '">' . esc_html__( 'Settings', 'wpheka-edit-orders-for-woocommerce' ) . '</a>' );
+		array_unshift( $links, '<a href="' . esc_url( Edit_Orders_For_WooCommerce_Admin_Page::url( 'settings' ) ) . '">' . esc_html__( 'Settings', 'wpheka-edit-orders-for-woocommerce' ) . '</a>' );
 
 		return $links;
 	}

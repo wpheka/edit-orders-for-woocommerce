@@ -661,23 +661,23 @@ update_option( 'timezone_string', $eo_tz_before );
 
 // ---------------------------------------------------------------------------
 WP_CLI::log( 'Settings keep only the statuses offered' );
-$GLOBALS['current_section'] = ''; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- what WooCommerce does on its settings screen.
-$eo_pages                   = Edit_Orders_For_WooCommerce_Admin::settings_page( array() );
-$eo_page                    = end( $eo_pages );
-$_POST                      = array(
-	Edit_Orders_For_WooCommerce_Settings::OPTION => array(
-		'admin_enabled'     => '1',
-		'customer_enabled'  => '1',
-		'editable_statuses' => array( 'completed', 'processing' ),
-		'window_minutes'    => '60',
-		'cancel_mode'       => 'approval',
-		'cancel_reasons'    => 'Too slow',
-		'cancel_policy'     => '',
-		'note_max_length'   => '500',
-	),
+foreach ( array( 'wpheka-ui/load.php', 'admin/class-edit-orders-for-woocommerce-settings-form.php' ) as $eo_file ) {
+	require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/' . $eo_file;
+}
+Edit_Orders_For_WooCommerce_Settings_Form::save(
+	array(
+		Edit_Orders_For_WooCommerce_Settings::OPTION => array(
+			'admin_enabled'     => '1',
+			'customer_enabled'  => '1',
+			'editable_statuses' => array( 'completed', 'processing' ),
+			'window_minutes'    => '60',
+			'cancel_mode'       => 'approval',
+			'cancel_reasons'    => 'Too slow',
+			'cancel_policy'     => '',
+			'note_max_length'   => '500',
+		),
+	)
 );
-$eo_page->save();
-$_POST = array();
 $eo_check( 'a posted "Completed" is dropped', array( 'processing' ) === array_values( (array) Edit_Orders_For_WooCommerce_Settings::get( 'editable_statuses' ) ), wp_json_encode( Edit_Orders_For_WooCommerce_Settings::get( 'editable_statuses' ) ) );
 delete_option( Edit_Orders_For_WooCommerce_Settings::OPTION );
 

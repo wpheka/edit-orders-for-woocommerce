@@ -110,16 +110,16 @@ async function shot( page, locator, name ) {
 		await customer.locator( '#edit-order summary', { hasText: 'Cancel this order' } ).click();
 		await customer.locator( '#edit-order select[name="reason"]' ).selectOption( 'Delivery takes too long' );
 		await Promise.all( [ customer.waitForNavigation(), customer.locator( '.eofw-cancel-button' ).click() ] );
-		await admin.goto( `${ BASE }/wp-admin/admin.php?page=edit-orders-for-woocommerce` );
+		await admin.goto( `${ BASE }/wp-admin/admin.php?page=edit-orders-for-woocommerce&tab=activity` );
 		await admin.addStyleTag( { content: '.update-nag,.notice{display:none!important}' } );
-		await shot( admin, admin.locator( '.wrap.edit-orders-activity' ), 'screenshot-5.png' );
+		await shot( admin, admin.locator( '.wpheka-ui' ), 'screenshot-5.png' );
 
 		// 6. Settings.
-		await admin.goto( `${ BASE }/wp-admin/admin.php?page=wc-settings&tab=edit_orders` );
+		await admin.goto( `${ BASE }/wp-admin/admin.php?page=edit-orders-for-woocommerce&tab=settings` );
 		await admin.addStyleTag( { content: '.update-nag,.notice{display:none!important}' } );
 		// Taller than the form: a capture longer than the window is stitched, with a seam across it.
 		await admin.setViewportSize( { width: 1400, height: 2000 } );
-		await shot( admin, admin.locator( '#mainform' ), 'screenshot-6.png' );
+		await shot( admin, admin.locator( '.wpheka-ui' ), 'screenshot-6.png' );
 	} finally {
 		await browser.close();
 		if ( created.length ) {

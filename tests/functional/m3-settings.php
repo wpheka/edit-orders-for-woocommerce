@@ -1,9 +1,10 @@
 <?php
 /**
- * Functional suite for M3: the settings screen (spec section 6).
+ * Functional suite for M3: the settings screen (spec section 6), on the plugin's own
+ * page since 1.2.0 (WPHEKA > Edit Orders > Settings).
  *
- * Saves go through WC_Admin_Settings::save_fields() with a posted form, the same path
- * as pressing "Save changes" in WooCommerce > Settings > Edit Orders.
+ * Saves go through Edit_Orders_For_WooCommerce_Settings_Form::save() with a posted form,
+ * the same path as pressing "Save changes" on the page.
  *
  * Run with: bash tests/functional/run.sh m3-settings (or all suites without an argument).
  *
@@ -37,6 +38,9 @@ if ( ! class_exists( 'WC_Admin_Settings', false ) ) {
 if ( ! class_exists( 'WC_Settings_Page', false ) ) {
 	require_once WC_ABSPATH . 'includes/admin/settings/class-wc-settings-page.php';
 }
+foreach ( array( 'wpheka-ui/load.php', 'admin/class-edit-orders-for-woocommerce-settings-form.php', 'admin/class-edit-orders-for-woocommerce-admin-page.php' ) as $eo_file ) {
+	require_once EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'includes/' . $eo_file;
+}
 
 $eo_before_settings = get_option( Edit_Orders_For_WooCommerce_Settings::OPTION, null );
 $eo_before_delete   = get_option( 'edit_orders_for_woocommerce_delete_data', null );
@@ -45,45 +49,35 @@ wp_set_current_user( 1 );
 
 $eo_pages = Edit_Orders_For_WooCommerce_Admin::settings_page( array() );
 $eo_page  = end( $eo_pages );
-$eo_check( 'the Edit Orders settings tab is registered', $eo_page instanceof Edit_Orders_For_WooCommerce_Settings_Page && 'edit_orders' === $eo_page->get_id() );
-
-$eo_fields  = $eo_page->get_settings();
-$eo_ids     = wp_list_pluck(
-	array_filter(
-		$eo_fields,
-		static function ( $f ) {
-			return isset( $f['id'] ) && ! in_array( $f['type'], array( 'title', 'sectionend' ), true );
-		} ), 'id' ); // phpcs:ignore Generic.Functions.FunctionCallArgumentSpacing,PEAR.Functions.FunctionCallSignature -- compact test helper.
-$eo_want    = array( 'admin_enabled', 'editable_statuses', 'customer_enabled', 'window_minutes', 'action_cancel', 'action_address', 'action_swap', 'action_note', 'cancel_mode', 'cancel_reasons', 'cancel_reason_required', 'cancel_policy', 'note_max_length' );
-$eo_missing = array();
-foreach ( $eo_want as $eo_key ) {
-	if ( ! in_array( Edit_Orders_For_WooCommerce_Settings::OPTION . '[' . $eo_key . ']', $eo_ids, true ) ) {
-		$eo_missing[] = $eo_key;
-	}
-}
-$eo_check( 'every setting has a field, saved into the one settings option', array() === $eo_missing, implode( ', ', $eo_missing ) );
-$eo_check( 'delete-data uses the option uninstall.php reads', in_array( 'edit_orders_for_woocommerce_delete_data', $eo_ids, true ) && false !== strpos( (string) file_get_contents( EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'uninstall.php' ), "'edit_orders_for_woocommerce_delete_data'" ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-$eo_statuses = array();
-foreach ( $eo_fields as $eo_field ) {
-	if ( isset( $eo_field['id'] ) && false !== strpos( $eo_field['id'], 'editable_statuses' ) ) {
-		$eo_statuses = array_keys( $eo_field['options'] );
-	}
-}
-$eo_check( 'status choices leave out final and unpaid statuses', in_array( 'processing', $eo_statuses, true ) && in_array( 'on-hold', $eo_statuses, true ) && ! array_intersect( array( 'completed', 'cancelled', 'refunded', 'failed', 'pending' ), $eo_statuses ) );
-
-// The settings screen sets the section; WooCommerce before 9.6 prints nothing without it.
+$eo_check( 'the old WooCommerce tab is still registered', $eo_page instanceof Edit_Orders_For_WooCommerce_Settings_Page && 'edit_orders' === $eo_page->get_id() );
 $GLOBALS['current_section'] = ''; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- what WooCommerce's settings screen does.
 ob_start();
 $eo_page->output();
 $eo_html = ob_get_clean();
-$eo_check( 'the screen renders the fields', false !== strpos( $eo_html, 'edit_orders_for_woocommerce_settings[window_minutes]' ) && false !== strpos( $eo_html, 'edit_orders_for_woocommerce_settings[cancel_mode]' ) );
-$eo_check( 'with defaults: approval and 60 minutes', false !== strpos( $eo_html, 'value="60"' ) && preg_match( '/<option value="approval"[^>]*selected/', $eo_html ) );
+$eo_check( 'the old tab says the settings moved and links to the new page', false !== strpos( $eo_html, 'have moved' ) && false !== strpos( $eo_html, 'page=edit-orders-for-woocommerce' ) && false !== strpos( $eo_html, 'tab=settings' ) && array() === $eo_page->get_settings() );
+
+ob_start();
+Edit_Orders_For_WooCommerce_Settings_Form::render();
+$eo_html    = ob_get_clean();
+$eo_want    = array( 'admin_enabled', 'editable_statuses', 'customer_enabled', 'window_minutes', 'action_cancel', 'action_address', 'action_swap', 'action_note', 'cancel_mode', 'cancel_reasons', 'cancel_reason_required', 'cancel_policy', 'note_max_length', 'debug_log' );
+$eo_missing = array();
+foreach ( $eo_want as $eo_key ) {
+	if ( false === strpos( $eo_html, 'name="' . Edit_Orders_For_WooCommerce_Settings::OPTION . '[' . $eo_key . ']' ) ) {
+		$eo_missing[] = $eo_key;
+	}
+}
+$eo_check( 'every setting has a field on the new page, saved into the one settings option', array() === $eo_missing, implode( ', ', $eo_missing ) );
+$eo_check( 'every setting key is one the form saves', array() === array_diff( $eo_want, Edit_Orders_For_WooCommerce_Settings_Form::keys() ) );
+$eo_check( 'delete-data uses the option uninstall.php reads', false !== strpos( $eo_html, 'name="edit_orders_for_woocommerce_delete_data"' ) && false !== strpos( (string) file_get_contents( EDIT_ORDERS_FOR_WOOCOMMERCE_PATH . 'uninstall.php' ), "'edit_orders_for_woocommerce_delete_data'" ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+$eo_statuses = array_keys( Edit_Orders_For_WooCommerce_Settings_Form::status_options() );
+$eo_check( 'status choices leave out final and unpaid statuses', in_array( 'processing', $eo_statuses, true ) && in_array( 'on-hold', $eo_statuses, true ) && ! array_intersect( array( 'completed', 'cancelled', 'refunded', 'failed', 'pending' ), $eo_statuses ) );
+$eo_check( 'with defaults: approval and 60 minutes', false !== strpos( $eo_html, 'value="60"' ) && preg_match( '/value="approval" checked/', $eo_html ) );
+$eo_check( 'every Edit Orders email has an on/off switch and an Edit wording link', 7 === count( Edit_Orders_For_WooCommerce_Settings_Form::emails() ) && 14 === substr_count( $eo_html, 'name="emails[edit_orders_for_woocommerce_' ) && 7 === substr_count( $eo_html, 'section=edit_orders_for_woocommerce_email_' ), (string) count( Edit_Orders_For_WooCommerce_Settings_Form::emails() ) );
+$eo_check( 'customer rows sit under the customer switch', false !== strpos( $eo_html, 'data-w-controls="edit-orders-customer-rows"' ) && false !== strpos( $eo_html, 'id="edit-orders-customer-rows"' ) );
 
 WP_CLI::log( 'Saving' );
-// WooCommerce sets this from ?section= on the settings screen; '' is the default section.
-$GLOBALS['current_section'] = ''; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- what WooCommerce does on its settings screen.
-$eo_save                    = static function ( array $post ) use ( $eo_page ) {
-	// The browser always posts textareas; WooCommerce trims them and warns on a missing one.
+$eo_save = static function ( array $post ) {
+	// The browser always posts textareas.
 	$key          = Edit_Orders_For_WooCommerce_Settings::OPTION;
 	$post[ $key ] = array_merge(
 		array(
@@ -92,9 +86,7 @@ $eo_save                    = static function ( array $post ) use ( $eo_page ) {
 		),
 		$post[ $key ]
 	);
-	$_POST        = $post;
-	$eo_page->save();
-	$_POST = array();
+	Edit_Orders_For_WooCommerce_Settings_Form::save( $post );
 };
 $eo_option                  = Edit_Orders_For_WooCommerce_Settings::OPTION;
 $eo_save(
@@ -160,7 +152,82 @@ update_option( $eo_option, array( 'editable_statuses' => array( 'completed', 're
 $eo_check( 'a stored final status is ignored', array( 'processing', 'on-hold' ) === Edit_Orders_For_WooCommerce_Eligibility::editable_statuses() );
 
 $eo_links = Edit_Orders_For_WooCommerce_Admin::plugin_links( array( 'deactivate' => 'x' ) );
-$eo_check( 'Plugins screen gets a Settings link first', false !== strpos( reset( $eo_links ), 'tab=edit_orders' ) );
+$eo_check( 'Plugins screen gets a Settings link first, to the new page', false !== strpos( reset( $eo_links ), 'page=edit-orders-for-woocommerce' ) && false !== strpos( reset( $eo_links ), 'tab=settings' ) );
+
+WP_CLI::log( 'Emails, permissions and stats' );
+$eo_emails = Edit_Orders_For_WooCommerce_Settings_Form::emails();
+$eo_email  = $eo_emails['edit_orders_for_woocommerce_order_updated'];
+$eo_was    = $eo_email->get_option( 'enabled', $eo_email->enabled );
+$eo_save(
+	array(
+		$eo_option => array( 'window_minutes' => '60' ),
+		'emails'   => array( 'edit_orders_for_woocommerce_order_updated' => 'no' ),
+	)
+);
+$eo_fresh = new Edit_Orders_For_WooCommerce_Email_Order_Updated();
+$eo_check( 'an email switch turned off saves WooCommerce\'s own email setting', 'no' === $eo_fresh->get_option( 'enabled' ) && ! $eo_fresh->is_enabled() );
+$eo_save(
+	array(
+		$eo_option => array( 'window_minutes' => '60' ),
+		'emails'   => array( 'edit_orders_for_woocommerce_order_updated' => 'yes' ),
+	)
+);
+$eo_fresh = new Edit_Orders_For_WooCommerce_Email_Order_Updated();
+$eo_check( 'and turned on again', 'yes' === $eo_fresh->get_option( 'enabled' ) );
+$eo_fresh->update_option( 'enabled', $eo_was );
+
+$eo_manager = wp_insert_user(
+	array(
+		'user_login' => 'eo_m3_clerk_' . wp_generate_password( 6, false ),
+		'user_pass'  => wp_generate_password( 24 ),
+		'user_email' => 'eo-m3-clerk-' . wp_generate_password( 6, false ) . '@example.invalid',
+		'role'       => 'shop_manager',
+	)
+);
+$eo_role   = get_role( 'shop_manager' );
+$eo_had    = $eo_role && $eo_role->has_cap( 'manage_woocommerce' );
+if ( $eo_role ) {
+	$eo_role->remove_cap( 'manage_woocommerce' );
+}
+wp_set_current_user( $eo_manager );
+try {
+	$_GET['tab'] = 'settings';
+	$eo_check( 'a user without manage_woocommerce is sent to Activity, not Settings', 'activity' === Edit_Orders_For_WooCommerce_Admin_Page::current_tab() );
+} finally {
+	// Put the role back even if the check throws, so later suites see the shop manager as before.
+	unset( $_GET['tab'] );
+	if ( $eo_role && $eo_had ) {
+		$eo_role->add_cap( 'manage_woocommerce' );
+	}
+	wp_set_current_user( 1 );
+}
+require_once ABSPATH . 'wp-admin/includes/user.php';
+wp_delete_user( $eo_manager );
+global $submenu;
+Edit_Orders_For_WooCommerce_Admin_Page::register_page();
+$eo_under = array_column( isset( $submenu['wpheka_plugin_panel'] ) ? (array) $submenu['wpheka_plugin_panel'] : array(), 2 );
+$eo_check( 'the page is registered under the shared WPHEKA menu', in_array( Edit_Orders_For_WooCommerce_Admin_Page::PAGE, $eo_under, true ), wp_json_encode( $eo_under ) );
+$_GET['tab'] = 'help';
+$eo_check( 'an admin can open any tab', 'help' === Edit_Orders_For_WooCommerce_Admin_Page::current_tab() );
+unset( $_GET['tab'] );
+
+$eo_stats_before = Edit_Orders_For_WooCommerce_Settings_Form::stats();
+$eo_rows         = array(
+	array( 'order_id' => 999901, 'actor_type' => 'customer', 'action' => 'edit', 'refund_id' => 777, 'amount' => 12.5 ), // phpcs:ignore WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound -- test rows.
+	array( 'order_id' => 999902, 'actor_type' => 'staff', 'action' => 'balance_created', 'balance_order_id' => 999903, 'amount' => 20 ), // phpcs:ignore WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound -- test rows.
+	array( 'order_id' => 999902, 'actor_type' => 'customer', 'action' => 'balance_paid', 'balance_order_id' => 999903, 'amount' => 20 ), // phpcs:ignore WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound -- test rows.
+);
+foreach ( $eo_rows as $eo_row ) {
+	Edit_Orders_For_WooCommerce_Audit_Log::add( $eo_row );
+}
+$eo_stats = Edit_Orders_For_WooCommerce_Settings_Form::stats();
+$eo_check(
+	'stats count the activity log: 2 orders edited, 1 refund of 12.50, 1 pay link paid for 20, 1 customer change',
+	2 === $eo_stats['edited'] - $eo_stats_before['edited'] && 1 === $eo_stats['refunds'] - $eo_stats_before['refunds'] && abs( 12.5 - ( $eo_stats['refunded'] - $eo_stats_before['refunded'] ) ) < 0.001 && 1 === $eo_stats['links'] - $eo_stats_before['links'] && 1 === $eo_stats['links_paid'] - $eo_stats_before['links_paid'] && abs( 20 - ( $eo_stats['collected'] - $eo_stats_before['collected'] ) ) < 0.001 && 1 === $eo_stats['customer'] - $eo_stats_before['customer'],
+	wp_json_encode( array( $eo_stats_before, $eo_stats ) )
+);
+global $wpdb;
+$wpdb->query( 'DELETE FROM ' . Edit_Orders_For_WooCommerce_Audit_Log::table() . ' WHERE order_id IN ( 999901, 999902 )' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- test cleanup, fixed ids.
 
 WP_CLI::log( 'Cleanup' );
 foreach ( $eo_t['orders'] as $eo_order_id ) {

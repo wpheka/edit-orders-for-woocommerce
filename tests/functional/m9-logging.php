@@ -42,7 +42,7 @@ if ( ! class_exists( 'Edit_Orders_Mail_Log' ) ) {
 	WP_CLI::error( 'The mail log mu-plugin is not loaded (tests/env/mu-plugins).' );
 }
 
-foreach ( array( 'admin/class-edit-orders-for-woocommerce-admin.php', 'admin/class-edit-orders-for-woocommerce-settings-page.php', 'admin/class-edit-orders-for-woocommerce-system-status.php' ) as $eo_file ) {
+foreach ( array( 'admin/class-edit-orders-for-woocommerce-admin.php', 'admin/class-edit-orders-for-woocommerce-settings-page.php', 'admin/class-edit-orders-for-woocommerce-system-status.php', 'wpheka-ui/load.php', 'admin/class-edit-orders-for-woocommerce-settings-form.php', 'admin/class-edit-orders-for-woocommerce-admin-page.php' ) as $eo_file ) {
 	if ( ! class_exists( 'WC_Settings_Page', false ) ) {
 		require_once WC_ABSPATH . 'includes/admin/settings/class-wc-settings-page.php';
 	}
@@ -686,9 +686,7 @@ remove_filter( 'edit_orders_for_woocommerce_debug_log', $eo_debug_on );
 remove_filter( 'edit_orders_for_woocommerce_debug_log', $eo_debug_off );
 $eo_reset();
 $GLOBALS['current_section'] = ''; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- what WooCommerce does on its settings screen.
-$eo_pages                   = Edit_Orders_For_WooCommerce_Admin::settings_page( array() );
-$eo_page                    = end( $eo_pages );
-$eo_save                    = static function ( array $changes ) use ( $eo_page ) {
+$eo_save                    = static function ( array $changes ) {
 	$key      = Edit_Orders_For_WooCommerce_Settings::OPTION;
 	$settings = array_merge( wp_parse_args( (array) get_option( $key, array() ), Edit_Orders_For_WooCommerce_Settings::defaults() ), $changes );
 	$post     = array();
@@ -698,12 +696,11 @@ $eo_save                    = static function ( array $changes ) use ( $eo_page 
 		}
 		$post[ $name ] = $value;
 	}
-	$_POST = array( $key => $post );
+	$form = array( $key => $post );
 	if ( 'yes' === get_option( 'edit_orders_for_woocommerce_delete_data', 'no' ) ) {
-		$_POST['edit_orders_for_woocommerce_delete_data'] = 'yes';
+		$form['edit_orders_for_woocommerce_delete_data'] = 'yes';
 	}
-	$eo_page->save();
-	$_POST = array();
+	Edit_Orders_For_WooCommerce_Settings_Form::save( $form );
 };
 $eo_save(
 	array(
@@ -722,15 +719,11 @@ $eo_reset();
 $eo_save( array( 'debug_log' => 'no' ) );
 $eo_entry = $eo_find( 'settings saved by staff #1' );
 $eo_check( 'turning the debug log off is still logged, as a notice', $eo_entry && 'notice' === $eo_entry['level'] && false !== strpos( $eo_entry['message'], 'debug_log = no' ), $eo_dump() );
-$eo_fields = wp_list_pluck( $eo_page->get_settings(), 'id' );
-$eo_check( 'the Debug log field is on the settings page', in_array( Edit_Orders_For_WooCommerce_Settings::OPTION . '[debug_log]', $eo_fields, true ) );
-$eo_field = null;
-foreach ( $eo_page->get_settings() as $eo_f ) {
-	if ( isset( $eo_f['id'] ) && Edit_Orders_For_WooCommerce_Settings::OPTION . '[debug_log]' === $eo_f['id'] ) {
-		$eo_field = $eo_f;
-	}
-}
-$eo_check( 'it is off by default and links to the logs filtered to this source', 'no' === Edit_Orders_For_WooCommerce_Settings::defaults()['debug_log'] && $eo_field && false !== strpos( $eo_field['desc'], 'page=wc-status' ) && false !== strpos( $eo_field['desc'], 'tab=logs' ) && false !== strpos( $eo_field['desc'], 'source=wpheka-edit-orders-for-woocommerce' ) && ! empty( $eo_field['desc_tip'] ) );
+ob_start();
+Edit_Orders_For_WooCommerce_Settings_Form::render();
+$eo_form = ob_get_clean();
+$eo_check( 'the Debug log field is on the settings page', false !== strpos( $eo_form, 'name="' . Edit_Orders_For_WooCommerce_Settings::OPTION . '[debug_log]"' ) );
+$eo_check( 'it is off by default and links to the logs filtered to this source', 'no' === Edit_Orders_For_WooCommerce_Settings::defaults()['debug_log'] && false !== strpos( $eo_form, 'page=wc-status' ) && false !== strpos( $eo_form, 'tab=logs' ) && false !== strpos( $eo_form, 'source=wpheka-edit-orders-for-woocommerce' ) && false !== strpos( $eo_form, 'Errors, warnings and refusals are always recorded' ) );
 delete_option( Edit_Orders_For_WooCommerce_Settings::OPTION );
 $eo_check( 'off by default: info is not written without the setting or the filter', ! Edit_Orders_For_WooCommerce_Log::debug_enabled() );
 

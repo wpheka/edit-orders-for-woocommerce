@@ -4,7 +4,7 @@ Tags: edit order, change order, cancel order, order editing, woocommerce
 Requires at least: 6.6
 Tested up to: 7.1.3
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -28,7 +28,7 @@ You always see a preview first: what changes, what is refunded, what the custome
 * Swap a variation, such as a size or colour, with the price difference worked out from what the customer actually paid (coupons included)
 * Change the shipping or billing address, with shipping re-rated from your shipping zones and tax worked out again for the new address
 * See linked balance orders on the order screen, copy the pay link, send it again or cancel it
-* Approve or decline cancellation requests in **WooCommerce > Edit Orders**, next to a log of every change
+* Approve or decline cancellation requests in **WPHEKA > Edit Orders**, next to a log of every change
 
 = Customers can =
 
@@ -51,7 +51,7 @@ Changes stop as soon as the order ships: when it is completed, a tracking number
 
 = Emails =
 
-Seven WooCommerce emails, which you can turn on or off and reword in WooCommerce > Settings > Emails: order updated, balance due (with the pay link), manual refund needed, cancellation requested, order cancelled, cancellation declined and customer changed an order. The order confirmation email gets a "change or cancel" link while changes are allowed.
+Seven WooCommerce emails, which you can turn on or off in WPHEKA > Edit Orders > Settings and reword in WooCommerce > Settings > Emails: order updated, balance due (with the pay link), manual refund needed, cancellation requested, order cancelled, cancellation declined and customer changed an order. The order confirmation email gets a "change or cancel" link while changes are allowed.
 
 = Built for WooCommerce today =
 
@@ -65,7 +65,7 @@ Seven WooCommerce emails, which you can turn on or off and reword in WooCommerce
 
 1. Install and activate WooCommerce.
 2. Install "WPHEKA Edit Orders for WooCommerce" from Plugins > Add New (or upload the zip), then activate it.
-3. Go to WooCommerce > Settings > Edit Orders to choose what customers may change and for how long.
+3. Go to WPHEKA > Edit Orders > Settings to choose what customers may change and for how long.
 4. Open any paid Processing or On hold order and use **Edit items or address** in the "Edit order" box.
 
 == Frequently Asked Questions ==
@@ -92,7 +92,7 @@ Your settings and activity log are kept, unless you tick "Delete data on uninsta
 
 = How do I send a log to support? =
 
-Go to WooCommerce > Settings > Edit Orders, turn on **Debug log** and save. Repeat what went wrong. Then open WooCommerce > Status > Logs, choose the source `wpheka-edit-orders-for-woocommerce`, download the log and attach it to your support request.
+Go to WPHEKA > Edit Orders > Settings, turn on **Debug log** and save. Repeat what went wrong. Then open WooCommerce > Status > Logs, choose the source `wpheka-edit-orders-for-woocommerce`, download the log and attach it to your support request.
 
 The plugin does not write names, emails, phone numbers or addresses to the log. It records order numbers, amounts, payment method IDs and country and state codes. Errors and warnings are recorded even with Debug log off. The plugin sends nothing anywhere: you decide what to share. Turn Debug log off again when you are done.
 
@@ -102,10 +102,18 @@ The plugin does not write names, emails, phone numbers or addresses to the log. 
 2. The "Edit order" box on the order screen, with a balance order and its pay link.
 3. The customer's panel on the thank-you page, with the time left to make changes.
 4. A customer confirming an address change that costs more.
-5. Cancellation requests and the activity log in WooCommerce > Edit Orders.
-6. Settings in WooCommerce > Settings > Edit Orders.
+5. Cancellation requests and the activity log in WPHEKA > Edit Orders.
+6. Settings in WPHEKA > Edit Orders.
 
 == Changelog ==
+
+= 1.2.0 =
+* New: an Edit Orders page under the WPHEKA menu, with Settings, Activity and Help tabs. It replaces WooCommerce > Edit Orders. The settings moved here from WooCommerce > Settings > Edit Orders, which now links to the new page. Your settings are kept as they are.
+* New: the last 30 days at a glance: orders edited, amount refunded, pay links sent and paid. It also counts the changes customers made themselves.
+* New: turn each Edit Orders email on or off from the Settings tab.
+* New: a getting-started checklist, a search box for settings and a warning before you leave with unsaved changes.
+* The Settings tab needs the same permission as WooCommerce's own settings (manage_woocommerce). Staff who can edit orders without it see Activity and Help. They can still answer cancellation requests.
+* Tested with WooCommerce 11.2.1.
 
 = 1.1.0 =
 * New: a Debug log setting in WooCommerce > Settings > Edit Orders. With it on, every step of each change is recorded in WooCommerce > Status > Logs, to share with support. Errors and warnings are always recorded. The log has no names, emails or addresses. Nothing is sent anywhere.
@@ -128,6 +136,9 @@ The plugin does not write names, emails, phone numbers or addresses to the log. 
 * First release.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+A redesigned Edit Orders page under the WPHEKA menu. Settings moved there and are kept as they are.
 
 = 1.1.0 =
 Adds a Debug log to share with support and an Edit Orders section in System Status.
