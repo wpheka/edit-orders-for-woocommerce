@@ -104,6 +104,7 @@ The plugin does not write names, emails, phone numbers or addresses to the log. 
 4. A customer confirming an address change that costs more.
 5. Cancellation requests and the activity log in WPHEKA > Edit Orders.
 6. Settings in WPHEKA > Edit Orders.
+7. Turn each of the seven Edit Orders emails on or off, with a link to change its wording.
 
 == Changelog ==
 

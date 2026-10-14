@@ -4,7 +4,7 @@
  *   NODE_PATH=/path/to/node_modules node tests/e2e/screenshots.cjs
  *
  * 1. Editor preview  2. Order screen box with a balance order  3. Customer panel
- * 4. Customer address preview  5. Edit Orders page (request and log)  6. Settings
+ * 4. Customer address preview  5. Activity tab (request and log)  6. Settings  7. Emails
  *
  * Every order it creates is deleted afterwards.
  *
@@ -46,6 +46,22 @@ async function shot( page, locator, name ) {
 	await locator.scrollIntoViewIfNeeded();
 	await locator.screenshot( { path: path.join( OUT, name ) } );
 	console.log( `  saved ${ name }` );
+}
+
+// Captures the page from the top of the WPHEKA screen down to `bottom` (a y in page pixels).
+async function shotTo( page, bottom, name ) {
+	const ui = await page.locator( '.wpheka-ui' ).boundingBox();
+	const scroll = await page.evaluate( () => window.scrollY );
+	const top = ui.y + scroll;
+	await page.screenshot( { path: path.join( OUT, name ), fullPage: true, clip: { x: ui.x, y: top, width: ui.width, height: bottom - top } } );
+	console.log( `  saved ${ name }` );
+}
+
+// The page y of a locator's top or bottom edge.
+async function edge( page, locator, which ) {
+	const box = await locator.boundingBox();
+	const scroll = await page.evaluate( () => window.scrollY );
+	return box.y + scroll + ( 'bottom' === which ? box.height : 0 );
 }
 
 ( async () => {
@@ -112,14 +128,19 @@ async function shot( page, locator, name ) {
 		await Promise.all( [ customer.waitForNavigation(), customer.locator( '.eofw-cancel-button' ).click() ] );
 		await admin.goto( `${ BASE }/wp-admin/admin.php?page=edit-orders-for-woocommerce&tab=activity` );
 		await admin.addStyleTag( { content: '.update-nag,.notice{display:none!important}' } );
-		await shot( admin, admin.locator( '.wpheka-ui' ), 'screenshot-5.png' );
+		// Down to the activity log; the More from WPHEKA row is left out.
+		await shotTo( admin, ( await edge( admin, admin.locator( '.w-more' ), 'top' ) ) - 24, 'screenshot-5.png' );
 
 		// 6. Settings.
 		await admin.goto( `${ BASE }/wp-admin/admin.php?page=edit-orders-for-woocommerce&tab=settings` );
 		await admin.addStyleTag( { content: '.update-nag,.notice{display:none!important}' } );
 		// Taller than the form: a capture longer than the window is stitched, with a seam across it.
 		await admin.setViewportSize( { width: 1400, height: 2000 } );
-		await shot( admin, admin.locator( '.wpheka-ui' ), 'screenshot-6.png' );
+		// The top of the page down to Customer changes, so it stays readable on wordpress.org.
+		await shotTo( admin, ( await edge( admin, admin.locator( 'section#customers' ), 'bottom' ) ) + 24, 'screenshot-6.png' );
+
+		// 7. The Emails section with its on/off switches.
+		await shot( admin, admin.locator( 'section#emails' ), 'screenshot-7.png' );
 	} finally {
 		await browser.close();
 		if ( created.length ) {
